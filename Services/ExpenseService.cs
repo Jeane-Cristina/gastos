@@ -14,32 +14,27 @@ public class ExpenseService : IExpenseService
         _context = context;
     }
 
-    public async Task<List<Expense>> GetAllAsync(int? month, int? year, string? category)
+    public async Task<List<Expense>> GetAllAsync(int userId, int? month, int? year, string? category)
     {
-        var query = _context.Expenses.AsQueryable();
+        var query = _context.Expenses.Where(e => e.UserId == userId).AsQueryable();
 
         if (month.HasValue)
-        {
             query = query.Where(e => e.Date.Month == month.Value);
-        }
 
         if (year.HasValue)
-        {
             query = query.Where(e => e.Date.Year == year.Value);
-        }
 
         if (!string.IsNullOrWhiteSpace(category))
-        {
             query = query.Where(e => e.Category == category);
-        }
 
         return await query.OrderByDescending(e => e.Date).ToListAsync();
     }
 
-    public async Task<Expense> CreateAsync(ExpenseDto dto)
+    public async Task<Expense> CreateAsync(int userId, ExpenseDto dto)
     {
         var expense = new Expense
         {
+            UserId = userId,
             Description = dto.Description,
             Amount = dto.Amount,
             Category = dto.Category,
@@ -51,9 +46,9 @@ public class ExpenseService : IExpenseService
         return expense;
     }
 
-    public async Task<bool> UpdateAsync(int id, ExpenseDto dto)
+    public async Task<bool> UpdateAsync(int userId, int id, ExpenseDto dto)
     {
-        var expense = await _context.Expenses.FindAsync(id);
+        var expense = await _context.Expenses.FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId);
         if (expense == null) return false;
 
         expense.Description = dto.Description;
@@ -65,9 +60,9 @@ public class ExpenseService : IExpenseService
         return true;
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<bool> DeleteAsync(int userId, int id)
     {
-        var expense = await _context.Expenses.FindAsync(id);
+        var expense = await _context.Expenses.FirstOrDefaultAsync(e => e.Id == id && e.UserId == userId);
         if (expense == null) return false;
 
         _context.Expenses.Remove(expense);
@@ -75,9 +70,10 @@ public class ExpenseService : IExpenseService
         return true;
     }
 
-    public async Task<List<CategorySummaryDto>> GetSummaryAsync()
+    public async Task<List<CategorySummaryDto>> GetSummaryAsync(int userId)
     {
         return await _context.Expenses
+            .Where(e => e.UserId == userId)
             .GroupBy(e => e.Category)
             .Select(g => new CategorySummaryDto { Category = g.Key, Total = g.Sum(e => e.Amount) })
             .ToListAsync();
