@@ -52,6 +52,46 @@ namespace GastosApi.Migrations
                     b.ToTable("Expenses");
                 });
 
+            modelBuilder.Entity("GastosApi.Models.FinancialProfile", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("LastInsight")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("LastInsightGeneratedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LongTermGoal")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("MediumTermGoal")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("MonthlyIncome")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("SavingsGoal")
+                        .HasColumnType("numeric");
+
+                    b.Property<string>("ShortTermGoal")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FinancialProfiles");
+                });
+
             modelBuilder.Entity("GastosApi.Models.User", b =>
                 {
                     b.Property<int>("Id")
