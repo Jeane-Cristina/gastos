@@ -78,4 +78,20 @@ public class ExpenseService : IExpenseService
             .Select(g => new CategorySummaryDto { Category = g.Key, Total = g.Sum(e => e.Amount) })
             .ToListAsync();
     }
+
+    public async Task<List<Expense>> GetAllAsync(int userId, int? month, int? year, string? category, int? week)
+    {
+        var query = _context.Expenses.Where(e => e.UserId == userId).AsQueryable();
+
+        if (month.HasValue) query = query.Where(e => e.Date.Month == month.Value);
+        if (year.HasValue) query = query.Where(e => e.Date.Year == year.Value);
+        if (!string.IsNullOrWhiteSpace(category)) query = query.Where(e => e.Category == category);
+
+        var result = await query.OrderByDescending(e => e.Date).ToListAsync();
+
+        if (week.HasValue)
+            result = result.Where(e => ((e.Date.Day - 1) / 7) + 1 == week.Value).ToList();
+
+        return result;
+    }
 }

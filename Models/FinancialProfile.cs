@@ -11,4 +11,5 @@ public class FinancialProfile
     public string LongTermGoal { get; set; } = string.Empty;
     public string? LastInsight { get; set; }
     public DateTime? LastInsightGeneratedAt { get; set; }
+    public decimal AnnualSavingsGoal { get; set; }
 }

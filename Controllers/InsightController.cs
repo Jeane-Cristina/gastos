@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using GastosApi.Data;
+using GastosApi.Dtos;
+using GastosApi.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
-using GastosApi.Data;
-using GastosApi.Services;
 
 namespace GastosApi.Controllers;
 
@@ -27,7 +28,7 @@ public class InsightController : ControllerBase
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpPost("generate")]
-    public async Task<IActionResult> Generate()
+    public async Task<IActionResult> Generate(GenerateInsightDto dto)
     {
         var userId = GetUserId();
         var profile = await _context.FinancialProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
@@ -48,7 +49,7 @@ public class InsightController : ControllerBase
         }
 
         var analytics = await _analyticsService.GetAnalyticsAsync(userId);
-        var insightText = await _insightService.GenerateInsightAsync(analytics, profile);
+        var insightText = await _insightService.GenerateInsightAsync(analytics, profile, dto.Note);
 
         if (profile == null)
         {
