@@ -60,6 +60,9 @@ namespace GastosApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<decimal>("AnnualSavingsGoal")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("LastInsight")
                         .HasColumnType("text");
 

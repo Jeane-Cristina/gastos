@@ -14,6 +14,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 builder.Services.AddScoped<ExpenseAnalyticsService>();
 builder.Services.AddHttpClient<InsightService>();
+builder.Services.AddScoped<GoalService>();
+builder.Services.AddScoped<CategorySuggestionService>();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
