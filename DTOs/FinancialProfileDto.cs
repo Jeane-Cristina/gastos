@@ -18,4 +18,6 @@ public class FinancialProfileDto
 
     [MaxLength(200)]
     public string LongTermGoal { get; set; } = string.Empty;
+
+    public decimal CurrentSavings { get; set; }
 }

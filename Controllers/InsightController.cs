@@ -49,7 +49,8 @@ public class InsightController : ControllerBase
         }
 
         var analytics = await _analyticsService.GetAnalyticsAsync(userId);
-        var insightText = await _insightService.GenerateInsightAsync(analytics, profile, dto.Note);
+        var purchaseGoals = await _context.PurchaseGoals.Where(g => g.UserId == userId).ToListAsync();
+        var insightText = await _insightService.GenerateInsightAsync(analytics, profile, dto.Note, purchaseGoals);
 
         if (profile == null)
         {
@@ -62,5 +63,21 @@ public class InsightController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { insight = insightText, cached = false, nextAvailableAt = DateTime.UtcNow.AddDays(7) });
+    }
+
+    [HttpPost("reset")]
+    public async Task<IActionResult> Reset()
+    {
+        var userId = GetUserId();
+        var profile = await _context.FinancialProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (profile != null)
+        {
+            profile.LastInsight = null;
+            profile.LastInsightGeneratedAt = null;
+            await _context.SaveChangesAsync();
+        }
+
+        return NoContent();
     }
 }
