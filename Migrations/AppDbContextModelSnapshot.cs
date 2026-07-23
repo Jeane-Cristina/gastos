@@ -63,6 +63,9 @@ namespace GastosApi.Migrations
                     b.Property<decimal>("AnnualSavingsGoal")
                         .HasColumnType("numeric");
 
+                    b.Property<decimal>("CurrentSavings")
+                        .HasColumnType("numeric");
+
                     b.Property<string>("LastInsight")
                         .HasColumnType("text");
 
@@ -93,6 +96,36 @@ namespace GastosApi.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("FinancialProfiles");
+                });
+
+            modelBuilder.Entity("GastosApi.Models.PurchaseGoal", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("EstimatedCost")
+                        .HasColumnType("numeric");
+
+                    b.Property<bool>("IsEssential")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Priority")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PurchaseGoals");
                 });
 
             modelBuilder.Entity("GastosApi.Models.User", b =>

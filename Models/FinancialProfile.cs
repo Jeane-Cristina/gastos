@@ -12,4 +12,6 @@ public class FinancialProfile
     public string? LastInsight { get; set; }
     public DateTime? LastInsightGeneratedAt { get; set; }
     public decimal AnnualSavingsGoal { get; set; }
+
+    public decimal CurrentSavings { get; set; }
 }

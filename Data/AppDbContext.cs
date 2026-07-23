@@ -12,4 +12,6 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
 
     public DbSet<FinancialProfile> FinancialProfiles { get; set; }
+
+    public DbSet<PurchaseGoal> PurchaseGoals { get; set; }
 }
