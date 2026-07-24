@@ -87,4 +87,31 @@ public class ExpenseAnalyticsService
     {
         return ((date.Day - 1) / 7) + 1;
     }
+
+    public async Task<(List<CategorySpending> current, List<CategorySpending> previous)> CompareMonthsAsync(int userId)
+    {
+        var now = DateTime.UtcNow;
+        var startOfCurrentMonth = new DateTime(now.Year, now.Month, 1);
+        var startOfPreviousMonth = startOfCurrentMonth.AddMonths(-1);
+
+        var currentExpenses = await _context.Expenses
+            .Where(e => e.UserId == userId && e.Date >= startOfCurrentMonth)
+            .ToListAsync();
+
+        var previousExpenses = await _context.Expenses
+            .Where(e => e.UserId == userId && e.Date >= startOfPreviousMonth && e.Date < startOfCurrentMonth)
+            .ToListAsync();
+
+        var current = currentExpenses
+            .GroupBy(e => e.Category)
+            .Select(g => new CategorySpending { Category = g.Key, Total = g.Sum(e => e.Amount) })
+            .ToList();
+
+        var previous = previousExpenses
+            .GroupBy(e => e.Category)
+            .Select(g => new CategorySpending { Category = g.Key, Total = g.Sum(e => e.Amount) })
+            .ToList();
+
+        return (current, previous);
+    }
 }
