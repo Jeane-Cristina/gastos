@@ -16,4 +16,5 @@ public class AppDbContext : DbContext
     public DbSet<PurchaseGoal> PurchaseGoals { get; set; }
 
     public DbSet<Investment> Investments { get; set; }
+    public DbSet<GoalSnapshot> GoalSnapshots { get; set; }
 }

@@ -14,11 +14,13 @@ public class ExpensesController : ControllerBase
 {
     private readonly IExpenseService _service;
     private readonly CategorySuggestionService _suggestionService;
+    private readonly ExpenseAnalyticsService _analyticsService;
 
-    public ExpensesController(IExpenseService service, CategorySuggestionService suggestionService)
+    public ExpensesController(IExpenseService service, CategorySuggestionService suggestionService, ExpenseAnalyticsService analyticsService)
     {
         _service = service;
         _suggestionService = suggestionService;
+        _analyticsService = analyticsService;
     }
 
     private int GetUserId() =>
@@ -80,5 +82,12 @@ public class ExpensesController : ControllerBase
         }
 
         return Ok(created);
+    }
+
+    [HttpGet("compare-months")]
+    public async Task<IActionResult> CompareMonths()
+    {
+        var (current, previous) = await _analyticsService.CompareMonthsAsync(GetUserId());
+        return Ok(new { current, previous });
     }
 }
