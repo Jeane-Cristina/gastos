@@ -17,4 +17,6 @@ public class AppDbContext : DbContext
 
     public DbSet<Investment> Investments { get; set; }
     public DbSet<GoalSnapshot> GoalSnapshots { get; set; }
+
+    public DbSet<RecurringExpense> RecurringExpenses { get; set; }
 }

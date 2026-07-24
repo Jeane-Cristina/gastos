@@ -1,10 +1,11 @@
 using GastosApi.Data;
 using GastosApi.Services;
-using Microsoft.EntityFrameworkCore;
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using GastosApi.Services;
+using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,19 @@ builder.Services.AddHttpClient<InsightService>();
 builder.Services.AddScoped<GoalService>();
 builder.Services.AddScoped<CategorySuggestionService>();
 builder.Services.AddHttpClient<InvestmentAdvisorService>();
+builder.Services.AddScoped<RecurringExpenseService>();
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("LoginPolicy", opt =>
+    {
+        opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+
+    options.RejectionStatusCode = 429;
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -53,7 +67,7 @@ builder.Services.AddAuthorization();
 
 var app = builder.Build();
 app.UseCors("AllowReact");
-
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
