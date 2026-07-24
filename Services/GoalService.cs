@@ -33,6 +33,14 @@ public class GoalService
         var monthlySavingsAchieved = profile.MonthlyIncome - monthlySpent;
         var annualSavingsAchieved = (profile.MonthlyIncome * 12) - annualSpent;
 
+        var monthlyProgress = profile.SavingsGoal > 0
+        ? (double)(monthlySavingsAchieved / profile.SavingsGoal) * 100
+        : 0;
+
+        var annualProgress = profile.AnnualSavingsGoal > 0
+            ? (double)(annualSavingsAchieved / profile.AnnualSavingsGoal) * 100
+            : 0;
+
         return new GoalReportDto
         {
             MonthlySpent = monthlySpent,
