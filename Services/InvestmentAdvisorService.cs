@@ -17,29 +17,50 @@ public class InvestmentAdvisorService
 
     public async Task<string> GetSuggestionsAsync(List<Investment> investments, FinancialProfile? profile)
     {
-        var prompt = BuildPrompt(investments, profile);
-        var apiKey = _config["Gemini:ApiKey"];
-
-        var requestBody = new
+        try
         {
-            contents = new[] { new { parts = new[] { new { text = prompt } } } }
-        };
+            var prompt = BuildPrompt(investments, profile);
+            var apiKey = _config["Gemini:ApiKey"];
 
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
-        var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                throw new InvalidOperationException("Gemini:ApiKey não está configurada.");
+            }
 
-        var response = await _httpClient.PostAsync(url, content);
-        response.EnsureSuccessStatusCode();
+            var requestBody = new
+            {
+                contents = new[] { new { parts = new[] { new { text = prompt } } } }
+            };
 
-        var responseJson = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(responseJson);
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
+            var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
 
-        return doc.RootElement
-            .GetProperty("candidates")[0]
-            .GetProperty("content")
-            .GetProperty("parts")[0]
-            .GetProperty("text")
-            .GetString() ?? "Não foi possível gerar sugestões desta vez.";
+            var response = await _httpClient.PostAsync(url, content);
+            var responseJson = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"Gemini retornou {response.StatusCode}: {responseJson}");
+            }
+
+            using var doc = JsonDocument.Parse(responseJson);
+
+            if (!doc.RootElement.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
+            {
+                throw new InvalidOperationException($"Resposta da Gemini sem 'candidates': {responseJson}");
+            }
+
+            return candidates[0]
+                .GetProperty("content")
+                .GetProperty("parts")[0]
+                .GetProperty("text")
+                .GetString() ?? "Não foi possível gerar sugestões desta vez.";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[InvestmentAdvisorService] Erro real: {ex.GetType().Name} - {ex.Message}");
+            throw;
+        }
     }
 
     private static string BuildPrompt(List<Investment> investments, FinancialProfile? profile)
