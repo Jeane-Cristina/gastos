@@ -19,8 +19,8 @@ public class GoalService
         if (profile == null) return null;
 
         var now = DateTime.UtcNow;
-        var startOfMonth = new DateTime(now.Year, now.Month, 1);
-        var startOfYear = new DateTime(now.Year, 1, 1);
+        var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var startOfYear = new DateTime(now.Year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         var monthlySpent = await _context.Expenses
             .Where(e => e.UserId == userId && e.Date >= startOfMonth)
