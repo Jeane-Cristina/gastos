@@ -80,4 +80,17 @@ public class InsightController : ControllerBase
 
         return NoContent();
     }
+
+    [HttpGet("latest")]
+    public async Task<IActionResult> GetLatest()
+    {
+        var userId = GetUserId();
+        var profile = await _context.FinancialProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (profile == null || string.IsNullOrEmpty(profile.LastInsight))
+            return Ok(new { insight = (string?)null, nextAvailableAt = (DateTime?)null });
+
+        var nextAvailable = profile.LastInsightGeneratedAt?.AddDays(7);
+        return Ok(new { insight = profile.LastInsight, nextAvailableAt = nextAvailable });
+    }
 }
