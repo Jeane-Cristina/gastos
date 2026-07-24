@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+﻿using BCrypt.Net;
 using GastosApi.Data;
 using GastosApi.Dtos;
 using GastosApi.Services;
-using BCrypt.Net;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 
 namespace GastosApi.Controllers;
 
@@ -21,6 +22,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("LoginPolicy")]
     public async Task<IActionResult> Login(LoginDto dto)
     {
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == dto.Username);
@@ -31,7 +33,33 @@ public class AuthController : ControllerBase
         }
 
         var token = _tokenService.GenerateToken(user);
-        return Ok(new { token });
+        var refreshToken = _tokenService.GenerateRefreshToken();
+
+        user.RefreshToken = refreshToken;
+        user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { token, refreshToken });
+    }
+
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] string refreshToken)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+
+        if (user == null || user.RefreshTokenExpiry < DateTime.UtcNow)
+        {
+            return Unauthorized(new { message = "Refresh token inválido ou expirado." });
+        }
+
+        var newToken = _tokenService.GenerateToken(user);
+        var newRefreshToken = _tokenService.GenerateRefreshToken();
+
+        user.RefreshToken = newRefreshToken;
+        user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { token = newToken, refreshToken = newRefreshToken });
     }
 
     [HttpPost("register")]

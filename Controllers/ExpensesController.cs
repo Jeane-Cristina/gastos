@@ -15,12 +15,18 @@ public class ExpensesController : ControllerBase
     private readonly IExpenseService _service;
     private readonly CategorySuggestionService _suggestionService;
     private readonly ExpenseAnalyticsService _analyticsService;
+    private readonly RecurringExpenseService _recurringService;
 
-    public ExpensesController(IExpenseService service, CategorySuggestionService suggestionService, ExpenseAnalyticsService analyticsService)
+    public ExpensesController(
+        IExpenseService service,
+        CategorySuggestionService suggestionService,
+        ExpenseAnalyticsService analyticsService,
+        RecurringExpenseService recurringService)
     {
         _service = service;
         _suggestionService = suggestionService;
         _analyticsService = analyticsService;
+        _recurringService = recurringService;
     }
 
     private int GetUserId() =>
@@ -29,6 +35,7 @@ public class ExpensesController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] int? month, [FromQuery] int? year, [FromQuery] string? category, [FromQuery] int? week)
     {
+        await _recurringService.GenerateDueExpensesAsync(GetUserId());
         var expenses = await _service.GetAllAsync(GetUserId(), month, year, category, week);
         return Ok(expenses);
     }
