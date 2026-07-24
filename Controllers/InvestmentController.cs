@@ -15,10 +15,12 @@ namespace GastosApi.Controllers;
 public class InvestmentController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly InvestmentAdvisorService _advisorService;
 
-    public InvestmentController(AppDbContext context)
+    public InvestmentController(AppDbContext context, InvestmentAdvisorService advisorService)
     {
         _context = context;
+        _advisorService = advisorService;
     }
 
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -57,8 +59,6 @@ public class InvestmentController : ControllerBase
         await _context.SaveChangesAsync();
         return NoContent();
     }
-
-    private readonly InvestmentAdvisorService _advisorService;
 
     [HttpGet("suggestions")]
     public async Task<IActionResult> GetSuggestions()
