@@ -98,6 +98,37 @@ namespace GastosApi.Migrations
                     b.ToTable("FinancialProfiles");
                 });
 
+            modelBuilder.Entity("GastosApi.Models.GoalSnapshot", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("Month")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("SavingsAchieved")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("SavingsGoal")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("Spent")
+                        .HasColumnType("numeric");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("GoalSnapshots");
+                });
+
             modelBuilder.Entity("GastosApi.Models.Investment", b =>
                 {
                     b.Property<int>("Id")

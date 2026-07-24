@@ -47,11 +47,13 @@ public class GoalService
             MonthlySavingsGoal = profile.SavingsGoal,
             MonthlySavingsAchieved = monthlySavingsAchieved,
             MonthlyGoalMet = monthlySavingsAchieved >= profile.SavingsGoal,
+            MonthlyProgressPercent = Math.Max(0, Math.Min(100, monthlyProgress)),
 
             AnnualSpent = annualSpent,
             AnnualSavingsGoal = profile.AnnualSavingsGoal,
             AnnualSavingsAchieved = annualSavingsAchieved,
-            AnnualGoalMet = annualSavingsAchieved >= profile.AnnualSavingsGoal
+            AnnualGoalMet = annualSavingsAchieved >= profile.AnnualSavingsGoal,
+            AnnualProgressPercent = Math.Max(0, Math.Min(100, annualProgress))
         };
     }
 }
