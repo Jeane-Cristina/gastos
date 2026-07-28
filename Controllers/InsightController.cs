@@ -93,4 +93,14 @@ public class InsightController : ControllerBase
         var nextAvailable = profile.LastInsightGeneratedAt?.AddDays(7);
         return Ok(new { insight = profile.LastInsight, nextAvailableAt = nextAvailable });
     }
+
+    [HttpPost("ask")]
+    public async Task<IActionResult> Ask(ChatQueryDto dto)
+    {
+        var userId = GetUserId();
+        var analytics = await _analyticsService.GetAnalyticsAsync(userId);
+        var profile = await _context.FinancialProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
+        var answer = await _insightService.AnswerQuestionAsync(dto.Question, analytics, profile);
+        return Ok(new { answer });
+    }
 }
