@@ -14,20 +14,23 @@ public class ExpenseService : IExpenseService
         _context = context;
     }
 
-    public async Task<List<Expense>> GetAllAsync(int userId, int? month, int? year, string? category)
+    public async Task<PagedResult<Expense>> GetAllAsync(int userId, int? month, int? year, string? category, int? week, int page, int pageSize)
     {
         var query = _context.Expenses.Where(e => e.UserId == userId).AsQueryable();
 
-        if (month.HasValue)
-            query = query.Where(e => e.Date.Month == month.Value);
+        if (month.HasValue) query = query.Where(e => e.Date.Month == month.Value);
+        if (year.HasValue) query = query.Where(e => e.Date.Year == year.Value);
+        if (!string.IsNullOrWhiteSpace(category)) query = query.Where(e => e.Category == category);
 
-        if (year.HasValue)
-            query = query.Where(e => e.Date.Year == year.Value);
+        query = query.OrderByDescending(e => e.Date);
 
-        if (!string.IsNullOrWhiteSpace(category))
-            query = query.Where(e => e.Category == category);
+        var totalCount = await query.CountAsync();
+        var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
 
-        return await query.OrderByDescending(e => e.Date).ToListAsync();
+        if (week.HasValue)
+            items = items.Where(e => ((e.Date.Day - 1) / 7) + 1 == week.Value).ToList();
+
+        return new PagedResult<Expense> { Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize };
     }
 
     public async Task<Expense> CreateAsync(int userId, ExpenseDto dto)
@@ -77,21 +80,5 @@ public class ExpenseService : IExpenseService
             .GroupBy(e => e.Category)
             .Select(g => new CategorySummaryDto { Category = g.Key, Total = g.Sum(e => e.Amount) })
             .ToListAsync();
-    }
-
-    public async Task<List<Expense>> GetAllAsync(int userId, int? month, int? year, string? category, int? week)
-    {
-        var query = _context.Expenses.Where(e => e.UserId == userId).AsQueryable();
-
-        if (month.HasValue) query = query.Where(e => e.Date.Month == month.Value);
-        if (year.HasValue) query = query.Where(e => e.Date.Year == year.Value);
-        if (!string.IsNullOrWhiteSpace(category)) query = query.Where(e => e.Category == category);
-
-        var result = await query.OrderByDescending(e => e.Date).ToListAsync();
-
-        if (week.HasValue)
-            result = result.Where(e => ((e.Date.Day - 1) / 7) + 1 == week.Value).ToList();
-
-        return result;
     }
 }

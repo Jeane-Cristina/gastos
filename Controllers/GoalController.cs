@@ -4,6 +4,7 @@ using GastosApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Security.Claims;
 
 namespace GastosApi.Controllers;
@@ -15,11 +16,13 @@ public class GoalController : ControllerBase
 {
     private readonly GoalService _goalService;
     private readonly AppDbContext _context;
+    private readonly IMemoryCache _cache;
 
-    public GoalController(GoalService goalService, AppDbContext context)
+    public GoalController(GoalService goalService, AppDbContext context, IMemoryCache cache)
     {
         _goalService = goalService;
         _context = context;
+        _cache = cache;
     }
 
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -27,8 +30,16 @@ public class GoalController : ControllerBase
     [HttpGet("report")]
     public async Task<IActionResult> GetReport()
     {
-        var report = await _goalService.GetReportAsync(GetUserId());
+        var userId = GetUserId();
+        var cacheKey = $"goal-report-{userId}";
+
+        if (_cache.TryGetValue(cacheKey, out object? cached))
+            return Ok(cached);
+
+        var report = await _goalService.GetReportAsync(userId);
         if (report == null) return Ok(null);
+
+        _cache.Set(cacheKey, report, TimeSpan.FromMinutes(5));
         return Ok(report);
     }
 
