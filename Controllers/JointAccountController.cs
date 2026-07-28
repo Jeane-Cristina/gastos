@@ -19,11 +19,16 @@ public class JointAccountController : ControllerBase
     private readonly JointExpenseService _expenseService;
     private readonly InsightService _insightService;
 
-    public JointAccountController(AppDbContext context, JointAccountService service, JointExpenseService expenseService)
+    public JointAccountController(
+        AppDbContext context,
+        JointAccountService service,
+        JointExpenseService expenseService,
+        InsightService insightService)
     {
         _context = context;
         _service = service;
         _expenseService = expenseService;
+        _insightService = insightService;
     }
 
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
@@ -133,12 +138,11 @@ public class JointAccountController : ControllerBase
         if (!await _service.IsMemberAsync(id, GetUserId())) return Forbid();
 
         var contributions = await _expenseService.GetContributionsAsync(id);
-        // Score simplificado: quem contribuiu mais próximo de 50% está "equilibrando" melhor a conta
         var scores = contributions.Select(c => new
         {
             c.Username,
             c.Percent,
-            Balance = 100 - Math.Abs(50 - c.Percent) * 2 // 50% de contribuição = score 100; quanto mais desbalanceado, menor
+            Balance = 100 - Math.Abs(50 - c.Percent) * 2
         });
 
         return Ok(scores);
