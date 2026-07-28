@@ -40,7 +40,7 @@ public class ExpenseService : IExpenseService
             UserId = userId,
             Description = dto.Description,
             Amount = dto.Amount,
-            Category = dto.Category,
+            Category = CategoryNormalizer.Normalize(dto.Category),
             Date = dto.Date
         };
 
@@ -56,7 +56,7 @@ public class ExpenseService : IExpenseService
 
         expense.Description = dto.Description;
         expense.Amount = dto.Amount;
-        expense.Category = dto.Category;
+        expense.Category = CategoryNormalizer.Normalize(dto.Category);
         expense.Date = dto.Date;
 
         await _context.SaveChangesAsync();
