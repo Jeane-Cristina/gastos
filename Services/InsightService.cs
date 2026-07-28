@@ -45,6 +45,39 @@ public class InsightService
             .GetString() ?? "Não foi possível gerar o insight desta vez.";
     }
 
+    public async Task<string> AnswerQuestionAsync(string question, ExpenseAnalytics analytics, FinancialProfile? profile)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Você é um assistente financeiro. Responda a pergunta abaixo de forma direta e curta (máximo 3 frases), com base SOMENTE nos dados fornecidos. Se a pergunta não puder ser respondida com esses dados, diga isso claramente em vez de inventar.");
+        sb.AppendLine();
+        sb.AppendLine($"Total gasto nos últimos 3 meses: R$ {analytics.TotalLast3Months}");
+        sb.AppendLine("Gasto por categoria:");
+        foreach (var c in analytics.SpendingByCategory)
+            sb.AppendLine($"  {c.Category}: R$ {c.Total}");
+
+        if (profile != null)
+        {
+            sb.AppendLine($"Meta de economia mensal: R$ {profile.SavingsGoal}");
+            sb.AppendLine($"Renda mensal: R$ {profile.MonthlyIncome}");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine($"Pergunta: {question}");
+
+        var apiKey = _config["Gemini:ApiKey"];
+        var requestBody = new { contents = new[] { new { parts = new[] { new { text = sb.ToString() } } } } };
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
+        var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+
+        var response = await _httpClient.PostAsync(url, content);
+        response.EnsureSuccessStatusCode();
+        var responseJson = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(responseJson);
+
+        return doc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString()
+            ?? "Não consegui responder isso agora.";
+    }
+
     private static string BuildPrompt(ExpenseAnalytics analytics, FinancialProfile? profile, string? note, List<PurchaseGoal> purchaseGoals)
     {
         var sb = new StringBuilder();
