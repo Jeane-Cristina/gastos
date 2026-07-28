@@ -20,6 +20,7 @@ builder.Services.AddScoped<CategorySuggestionService>();
 builder.Services.AddHttpClient<InvestmentAdvisorService>();
 builder.Services.AddScoped<RecurringExpenseService>();
 builder.Services.AddScoped<JointAccountService>();
+builder.Services.AddScoped<JointExpenseService>();
 
 builder.Services.AddRateLimiter(options =>
 {
