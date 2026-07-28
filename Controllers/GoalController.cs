@@ -85,4 +85,12 @@ public class GoalController : ControllerBase
             .ToListAsync();
         return Ok(history);
     }
+
+    [HttpGet("score")]
+    public async Task<IActionResult> GetScore()
+    {
+        var report = await _goalService.GetReportAsync(GetUserId());
+        if (report == null) return Ok(new { score = 0 });
+        return Ok(new { score = (int)report.MonthlyProgressPercent });
+    }
 }

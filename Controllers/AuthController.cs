@@ -14,11 +14,13 @@ public class AuthController : ControllerBase
 {
     private readonly AppDbContext _context;
     private readonly TokenService _tokenService;
+    private readonly EmailService _emailService;
 
-    public AuthController(AppDbContext context, TokenService tokenService)
+    public AuthController(AppDbContext context, TokenService tokenService, EmailService emailService)
     {
         _context = context;
         _tokenService = tokenService;
+        _emailService = emailService;
     }
 
     [HttpPost("login")]
@@ -84,4 +86,40 @@ public class AuthController : ControllerBase
         return Ok(new { token });
     }
 
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordDto dto)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == dto.Username);
+
+        // Sempre retorna sucesso, mesmo se o usuário não existir —
+        // evita que alguém descubra quais usernames existem tentando resets em massa
+        if (user == null) return Ok(new { message = "Se o usuário existir, um e-mail foi enviado." });
+
+        var token = Convert.ToBase64String(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32))
+            .Replace("+", "-").Replace("/", "_").Replace("=", "");
+
+        user.PasswordResetToken = token;
+        user.PasswordResetExpiry = DateTime.UtcNow.AddMinutes(15);
+        await _context.SaveChangesAsync();
+
+        await _emailService.SendPasswordResetEmailAsync(user.Username, token);
+
+        return Ok(new { message = "Se o usuário existir, um e-mail foi enviado." });
+    }
+
+    [HttpPost("reset-password")]
+    public async Task<IActionResult> ResetPassword(ResetPasswordDto dto)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.PasswordResetToken == dto.Token);
+
+        if (user == null || user.PasswordResetExpiry < DateTime.UtcNow)
+            return BadRequest(new { message = "Token inválido ou expirado." });
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+        user.PasswordResetToken = null;
+        user.PasswordResetExpiry = null;
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = "Senha alterada com sucesso." });
+    }
 }

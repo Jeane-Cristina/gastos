@@ -74,4 +74,37 @@ public class JointAccountService
         return await _context.JointAccountMembers.AnyAsync(
             m => m.JointAccountId == jointAccountId && m.UserId == userId && m.Status == InviteStatus.Accepted);
     }
+
+    public async Task<bool> LeaveAsync(int jointAccountId, int userId)
+    {
+        var member = await _context.JointAccountMembers
+            .FirstOrDefaultAsync(m => m.JointAccountId == jointAccountId && m.UserId == userId && m.Status == InviteStatus.Accepted);
+
+        if (member == null) return false;
+
+        _context.JointAccountMembers.Remove(member);
+        await _context.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<(bool success, string? error)> RemoveMemberAsync(int jointAccountId, int requestingUserId, int targetUserId)
+    {
+        var account = await _context.JointAccounts.FindAsync(jointAccountId);
+        if (account == null) return (false, "Conta não encontrada.");
+
+        if (account.CreatedByUserId != requestingUserId)
+            return (false, "Somente quem criou a conta pode remover outros membros.");
+
+        if (requestingUserId == targetUserId)
+            return (false, "Use a opção 'Sair' para remover a si mesmo.");
+
+        var member = await _context.JointAccountMembers
+            .FirstOrDefaultAsync(m => m.JointAccountId == jointAccountId && m.UserId == targetUserId);
+
+        if (member == null) return (false, "Membro não encontrado.");
+
+        _context.JointAccountMembers.Remove(member);
+        await _context.SaveChangesAsync();
+        return (true, null);
+    }
 }
