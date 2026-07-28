@@ -17,6 +17,7 @@ public class JointAccountController : ControllerBase
     private readonly AppDbContext _context;
     private readonly JointAccountService _service;
     private readonly JointExpenseService _expenseService;
+    private readonly InsightService _insightService;
 
     public JointAccountController(AppDbContext context, JointAccountService service, JointExpenseService expenseService)
     {
@@ -108,5 +109,51 @@ public class JointAccountController : ControllerBase
         if (!await _service.IsMemberAsync(id, GetUserId())) return Forbid();
         var summary = await _expenseService.GetSummaryByCategoryAsync(id);
         return Ok(summary);
+    }
+
+    [HttpPost("{id}/leave")]
+    public async Task<IActionResult> Leave(int id)
+    {
+        var success = await _service.LeaveAsync(id, GetUserId());
+        if (!success) return NotFound();
+        return NoContent();
+    }
+
+    [HttpDelete("{id}/members/{targetUserId}")]
+    public async Task<IActionResult> RemoveMember(int id, int targetUserId)
+    {
+        var (success, error) = await _service.RemoveMemberAsync(id, GetUserId(), targetUserId);
+        if (!success) return BadRequest(new { message = error });
+        return NoContent();
+    }
+
+    [HttpGet("{id}/scores")]
+    public async Task<IActionResult> GetScores(int id)
+    {
+        if (!await _service.IsMemberAsync(id, GetUserId())) return Forbid();
+
+        var contributions = await _expenseService.GetContributionsAsync(id);
+        // Score simplificado: quem contribuiu mais próximo de 50% está "equilibrando" melhor a conta
+        var scores = contributions.Select(c => new
+        {
+            c.Username,
+            c.Percent,
+            Balance = 100 - Math.Abs(50 - c.Percent) * 2 // 50% de contribuição = score 100; quanto mais desbalanceado, menor
+        });
+
+        return Ok(scores);
+    }
+
+    [HttpGet("{id}/insight")]
+    public async Task<IActionResult> GetInsight(int id)
+    {
+        if (!await _service.IsMemberAsync(id, GetUserId())) return Forbid();
+
+        var expenses = await _expenseService.GetAllAsync(id);
+        var contributions = await _expenseService.GetContributionsAsync(id);
+        var goal = await _context.JointGoals.FirstOrDefaultAsync(g => g.JointAccountId == id);
+
+        var insight = await _insightService.GenerateJointInsightAsync(expenses, contributions, goal);
+        return Ok(new { insight });
     }
 }

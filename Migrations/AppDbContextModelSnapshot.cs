@@ -377,6 +377,12 @@ namespace GastosApi.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("PasswordResetExpiry")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PasswordResetToken")
+                        .HasColumnType("text");
+
                     b.Property<string>("RefreshToken")
                         .HasColumnType("text");
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Resend;
 using System.Text;
 using System.Threading.RateLimiting;
 
@@ -21,6 +22,11 @@ builder.Services.AddHttpClient<InvestmentAdvisorService>();
 builder.Services.AddScoped<RecurringExpenseService>();
 builder.Services.AddScoped<JointAccountService>();
 builder.Services.AddScoped<JointExpenseService>();
+builder.Services.AddOptions();
+builder.Services.AddHttpClient<ResendClient>();
+builder.Services.Configure<ResendClientOptions>(o => o.ApiToken = builder.Configuration["Resend:ApiToken"]!);
+builder.Services.AddTransient<IResend, ResendClient>();
+builder.Services.AddScoped<EmailService>();
 
 builder.Services.AddRateLimiter(options =>
 {
