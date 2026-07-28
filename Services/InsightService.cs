@@ -146,47 +146,63 @@ public class InsightService
     }
     public async Task<string> GenerateJointInsightAsync(List<JointExpense> expenses, List<ContributionSummary> contributions, JointGoal? goal)
     {
-        var sb = new StringBuilder();
-        sb.AppendLine("Você é um assistente financeiro para casais/duplas que dividem uma conta conjunta. Analise os dados e escreva uma recomendação em português, equilibrada entre as duas pessoas, sem parecer estar culpando ninguém.");
-        sb.AppendLine();
-
-        sb.AppendLine("Contribuição de cada pessoa:");
-        foreach (var c in contributions)
-            sb.AppendLine($"  {c.Username}: R$ {c.TotalPaid} ({c.Percent:F0}%)");
-
-        if (goal != null)
+        try
         {
+            var sb = new StringBuilder();
+            sb.AppendLine("Você é um assistente financeiro para casais/duplas que dividem uma conta conjunta. Analise os dados e escreva uma recomendação em português, equilibrada entre as duas pessoas, sem parecer estar culpando ninguém.");
             sb.AppendLine();
-            sb.AppendLine($"Limite mensal combinado: R$ {goal.MonthlySpendingLimit}");
-            sb.AppendLine($"Meta de economia combinada: R$ {goal.MonthlySavingsGoal}");
+
+            sb.AppendLine("Contribuição de cada pessoa:");
+            foreach (var c in contributions)
+                sb.AppendLine($"  {c.Username}: R$ {c.TotalPaid} ({c.Percent:F0}%)");
+
+            if (goal != null)
+            {
+                sb.AppendLine();
+                sb.AppendLine($"Limite mensal combinado: R$ {goal.MonthlySpendingLimit}");
+                sb.AppendLine($"Meta de economia combinada: R$ {goal.MonthlySavingsGoal}");
+            }
+
+            var totalSpent = expenses.Sum(e => e.Amount);
+            sb.AppendLine();
+            sb.AppendLine($"Total gasto na conta conjunta: R$ {totalSpent}");
+
+            sb.AppendLine();
+            sb.AppendLine("Estruture sua resposta EXATAMENTE neste formato:");
+            sb.AppendLine();
+            sb.AppendLine("EQUILÍBRIO DA CONTA:");
+            sb.AppendLine("[comente se a divisão está equilibrada ou não, sem julgamento, só constatação]");
+            sb.AppendLine();
+            sb.AppendLine("SUGESTÃO PRÁTICA:");
+            sb.AppendLine("[1 ação concreta pros dois, conectada ao limite/meta combinados]");
+
+            var apiKey = _config["Gemini:ApiKey"];
+
+            if (string.IsNullOrEmpty(apiKey))
+                throw new InvalidOperationException("Gemini:ApiKey não configurada.");
+
+            var requestBody = new { contents = new[] { new { parts = new[] { new { text = sb.ToString() } } } } };
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
+            var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync(url, content);
+            var responseJson = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+                throw new InvalidOperationException($"Gemini retornou {response.StatusCode}: {responseJson}");
+
+            using var doc = JsonDocument.Parse(responseJson);
+
+            if (!doc.RootElement.TryGetProperty("candidates", out var candidates) || candidates.GetArrayLength() == 0)
+                throw new InvalidOperationException($"Resposta sem 'candidates': {responseJson}");
+
+            return candidates[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString()
+                ?? "Não foi possível gerar o insight desta vez.";
         }
-
-        var totalSpent = expenses.Sum(e => e.Amount);
-        sb.AppendLine();
-        sb.AppendLine($"Total gasto na conta conjunta: R$ {totalSpent}");
-
-        sb.AppendLine();
-        sb.AppendLine("Estruture sua resposta EXATAMENTE neste formato:");
-        sb.AppendLine();
-        sb.AppendLine("EQUILÍBRIO DA CONTA:");
-        sb.AppendLine("[comente se a divisão está equilibrada ou não, sem julgamento, só constatação]");
-        sb.AppendLine();
-        sb.AppendLine("SUGESTÃO PRÁTICA:");
-        sb.AppendLine("[1 ação concreta pros dois, conectada ao limite/meta combinados]");
-
-        // reaproveita a mesma chamada HTTP pra Gemini já existente em GenerateInsightAsync —
-        // extraia esse trecho pra um método privado compartilhado se quiser evitar duplicação
-        var apiKey = _config["Gemini:ApiKey"];
-        var requestBody = new { contents = new[] { new { parts = new[] { new { text = sb.ToString() } } } } };
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
-        var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
-
-        var response = await _httpClient.PostAsync(url, content);
-        response.EnsureSuccessStatusCode();
-        var responseJson = await response.Content.ReadAsStringAsync();
-        using var doc = JsonDocument.Parse(responseJson);
-
-        return doc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString()
-            ?? "Não foi possível gerar o insight desta vez.";
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[GenerateJointInsightAsync] Erro real: {ex.GetType().Name} - {ex.Message}");
+            throw;
+        }
     }
 }
