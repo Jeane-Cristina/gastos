@@ -21,6 +21,10 @@ public class AppDbContext : DbContext
     public DbSet<RecurringExpense> RecurringExpenses { get; set; }
 
     public DbSet<CategoryBudget> CategoryBudgets { get; set; }
+    public DbSet<JointAccount> JointAccounts { get; set; }
+    public DbSet<JointAccountMember> JointAccountMembers { get; set; }
+    public DbSet<JointExpense> JointExpenses { get; set; }
+    public DbSet<JointGoal> JointGoals { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
