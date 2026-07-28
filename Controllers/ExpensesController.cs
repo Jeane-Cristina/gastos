@@ -33,10 +33,10 @@ public class ExpensesController : ControllerBase
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? month, [FromQuery] int? year, [FromQuery] string? category, [FromQuery] int? week)
+    public async Task<IActionResult> GetAll([FromQuery] int? month, [FromQuery] int? year, [FromQuery] string? category, [FromQuery] int? week, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         await _recurringService.GenerateDueExpensesAsync(GetUserId());
-        var expenses = await _service.GetAllAsync(GetUserId(), month, year, category, week);
+        var expenses = await _service.GetAllAsync(GetUserId(), month, year, category, week, page, pageSize);
         return Ok(expenses);
     }
 

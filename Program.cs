@@ -19,6 +19,7 @@ builder.Services.AddScoped<GoalService>();
 builder.Services.AddScoped<CategorySuggestionService>();
 builder.Services.AddHttpClient<InvestmentAdvisorService>();
 builder.Services.AddScoped<RecurringExpenseService>();
+builder.Services.AddMemoryCache();
 
 builder.Services.AddRateLimiter(options =>
 {

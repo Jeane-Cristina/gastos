@@ -19,4 +19,15 @@ public class AppDbContext : DbContext
     public DbSet<GoalSnapshot> GoalSnapshots { get; set; }
 
     public DbSet<RecurringExpense> RecurringExpenses { get; set; }
+
+    public DbSet<CategoryBudget> CategoryBudgets { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Expense>()
+            .HasIndex(e => e.UserId);
+
+        modelBuilder.Entity<Expense>()
+            .HasIndex(e => new { e.UserId, e.Date });
+    }
 }
