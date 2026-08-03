@@ -27,6 +27,7 @@ builder.Services.AddHttpClient<ResendClient>();
 builder.Services.Configure<ResendClientOptions>(o => o.ApiToken = builder.Configuration["Resend:ApiToken"]!);
 builder.Services.AddTransient<IResend, ResendClient>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddMemoryCache();
 
 builder.Services.AddRateLimiter(options =>
 {
