@@ -104,4 +104,18 @@ public class ExpensesController : ControllerBase
         var streak = await _analyticsService.GetStreakAsync(GetUserId());
         return Ok(new { streak });
     }
+
+    [HttpGet("check-duplicates")]
+    public async Task<IActionResult> CheckDuplicates([FromQuery] DateTime from, [FromQuery] DateTime to)
+    {
+        var userId = GetUserId();
+        var existing = await _service.GetAllAsync(userId, null, null, null, null, page: 1, pageSize: int.MaxValue);
+
+        var inRange = existing.Items
+            .Where(e => e.Date >= from && e.Date <= to)
+            .Select(e => new { e.Description, e.Amount, Date = e.Date.Date })
+            .ToList();
+
+        return Ok(inRange);
+    }
 }
