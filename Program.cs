@@ -28,6 +28,7 @@ builder.Services.Configure<ResendClientOptions>(o => o.ApiToken = builder.Config
 builder.Services.AddTransient<IResend, ResendClient>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient<WhatsAppService>();
 
 builder.Services.AddRateLimiter(options =>
 {

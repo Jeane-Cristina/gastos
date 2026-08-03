@@ -9,4 +9,6 @@ public class User
     public DateTime? PasswordResetExpiry { get; set; }
     public string? RefreshToken { get; set; }
     public DateTime? RefreshTokenExpiry { get; set; }
+
+    public string? WhatsAppNumber { get; set; }
 }
