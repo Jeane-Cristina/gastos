@@ -64,9 +64,9 @@ public class ExpensesController : ControllerBase
     }
 
     [HttpGet("summary")]
-    public async Task<IActionResult> GetSummary()
+    public async Task<IActionResult> GetSummary([FromQuery] int? month, [FromQuery] int? year, [FromQuery] string? category, [FromQuery] int? week)
     {
-        var summary = await _service.GetSummaryAsync(GetUserId());
+        var summary = await _service.GetSummaryAsync(GetUserId(), month, year, category, week);
         return Ok(summary);
     }
 

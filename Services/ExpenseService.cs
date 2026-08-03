@@ -73,12 +73,22 @@ public class ExpenseService : IExpenseService
         return true;
     }
 
-    public async Task<List<CategorySummaryDto>> GetSummaryAsync(int userId)
+    public async Task<List<CategorySummaryDto>> GetSummaryAsync(int userId, int? month, int? year, string? category, int? week)
     {
-        return await _context.Expenses
-            .Where(e => e.UserId == userId)
+        var query = _context.Expenses.Where(e => e.UserId == userId).AsQueryable();
+
+        if (month.HasValue) query = query.Where(e => e.Date.Month == month.Value);
+        if (year.HasValue) query = query.Where(e => e.Date.Year == year.Value);
+        if (!string.IsNullOrWhiteSpace(category)) query = query.Where(e => e.Category == category);
+
+        var expenses = await query.ToListAsync();
+
+        if (week.HasValue)
+            expenses = expenses.Where(e => ((e.Date.Day - 1) / 7) + 1 == week.Value).ToList();
+
+        return expenses
             .GroupBy(e => e.Category)
             .Select(g => new CategorySummaryDto { Category = g.Key, Total = g.Sum(e => e.Amount) })
-            .ToListAsync();
+            .ToList();
     }
 }
