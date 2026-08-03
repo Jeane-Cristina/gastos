@@ -97,4 +97,11 @@ public class ExpensesController : ControllerBase
         var (current, previous) = await _analyticsService.CompareMonthsAsync(GetUserId());
         return Ok(new { current, previous });
     }
+
+    [HttpGet("streak")]
+    public async Task<IActionResult> GetStreak()
+    {
+        var streak = await _analyticsService.GetStreakAsync(GetUserId());
+        return Ok(new { streak });
+    }
 }

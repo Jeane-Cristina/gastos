@@ -91,7 +91,7 @@ public class ExpenseAnalyticsService
     public async Task<(List<CategorySpending> current, List<CategorySpending> previous)> CompareMonthsAsync(int userId)
     {
         var now = DateTime.UtcNow;
-        var startOfCurrentMonth = new DateTime(now.Year, now.Month, 1);
+        var startOfCurrentMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         var startOfPreviousMonth = startOfCurrentMonth.AddMonths(-1);
 
         var currentExpenses = await _context.Expenses
@@ -113,5 +113,39 @@ public class ExpenseAnalyticsService
             .ToList();
 
         return (current, previous);
+    }
+
+    public async Task<int> GetStreakAsync(int userId)
+    {
+        var dates = await _context.Expenses
+            .Where(e => e.UserId == userId)
+            .Select(e => e.Date.Date)
+            .Distinct()
+            .OrderByDescending(d => d)
+            .ToListAsync();
+
+        if (dates.Count == 0) return 0;
+
+        var today = DateTime.UtcNow.Date;
+        var streak = 0;
+        var expectedDate = today;
+
+        if (dates[0] != today)
+            expectedDate = today.AddDays(-1);
+
+        foreach (var date in dates)
+        {
+            if (date == expectedDate)
+            {
+                streak++;
+                expectedDate = expectedDate.AddDays(-1);
+            }
+            else if (date < expectedDate)
+            {
+                break;
+            }
+        }
+
+        return streak;
     }
 }
