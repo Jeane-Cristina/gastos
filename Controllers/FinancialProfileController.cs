@@ -51,6 +51,7 @@ public class FinancialProfileController : ControllerBase
         profile.ShortTermGoal = dto.ShortTermGoal;
         profile.MediumTermGoal = dto.MediumTermGoal;
         profile.LongTermGoal = dto.LongTermGoal;
+        profile.CurrentSavings = dto.CurrentSavings;
 
         await _context.SaveChangesAsync();
         return Ok(profile);
