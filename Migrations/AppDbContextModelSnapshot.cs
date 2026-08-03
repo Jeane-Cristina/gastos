@@ -393,6 +393,9 @@ namespace GastosApi.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("WhatsAppNumber")
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
 
                     b.ToTable("Users");
