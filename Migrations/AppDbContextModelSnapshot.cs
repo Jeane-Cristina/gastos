@@ -67,6 +67,12 @@ namespace GastosApi.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<bool?>("Paid")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("PaidBy")
+                        .HasColumnType("text");
+
                     b.Property<int>("UserId")
                         .HasColumnType("integer");
 
