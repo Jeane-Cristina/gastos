@@ -33,10 +33,18 @@ public class ExpensesController : ControllerBase
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? month, [FromQuery] int? year, [FromQuery] string? category, [FromQuery] int? week, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] int? month,
+        [FromQuery] int? year,
+        [FromQuery] string? category,
+        [FromQuery] int? week,
+        [FromQuery] string? paidBy,
+        [FromQuery] bool? paid,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
         await _recurringService.GenerateDueExpensesAsync(GetUserId());
-        var expenses = await _service.GetAllAsync(GetUserId(), month, year, category, week, page, pageSize);
+        var expenses = await _service.GetAllAsync(GetUserId(), month, year, category, week, paidBy, paid, page, pageSize);
         return Ok(expenses);
     }
 
@@ -64,9 +72,15 @@ public class ExpensesController : ControllerBase
     }
 
     [HttpGet("summary")]
-    public async Task<IActionResult> GetSummary([FromQuery] int? month, [FromQuery] int? year, [FromQuery] string? category, [FromQuery] int? week)
+    public async Task<IActionResult> GetSummary(
+        [FromQuery] int? month,
+        [FromQuery] int? year,
+        [FromQuery] string? category,
+        [FromQuery] int? week,
+        [FromQuery] string? paidBy,
+        [FromQuery] bool? paid)
     {
-        var summary = await _service.GetSummaryAsync(GetUserId(), month, year, category, week);
+        var summary = await _service.GetSummaryAsync(GetUserId(), month, year, category, week, paidBy, paid);
         return Ok(summary);
     }
 
@@ -109,7 +123,7 @@ public class ExpensesController : ControllerBase
     public async Task<IActionResult> CheckDuplicates([FromQuery] DateTime from, [FromQuery] DateTime to)
     {
         var userId = GetUserId();
-        var existing = await _service.GetAllAsync(userId, null, null, null, null, page: 1, pageSize: int.MaxValue);
+        var existing = await _service.GetAllAsync(userId, null, null, null, null, null, null, page: 1, pageSize: int.MaxValue);
 
         var inRange = existing.Items
             .Where(e => e.Date >= from && e.Date <= to)

@@ -8,5 +8,7 @@
         public decimal Amount { get; set; }
         public string Category { get; set; } = string.Empty;
         public DateTime Date { get; set; }
+        public string? PaidBy { get; set; }
+        public bool? Paid { get; set; }
     }
 }

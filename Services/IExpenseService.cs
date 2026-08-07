@@ -5,9 +5,9 @@ namespace GastosApi.Services;
 
 public interface IExpenseService
 {
-    Task<PagedResult<Expense>> GetAllAsync(int userId, int? month, int? year, string? category, int? week, int page, int pageSize); 
+    Task<PagedResult<Expense>> GetAllAsync(int userId, int? month, int? year, string? category, int? week, string? paidBy, bool? paid, int page, int pageSize);
     Task<Expense> CreateAsync(int userId, ExpenseDto dto);
     Task<bool> UpdateAsync(int userId, int id, ExpenseDto dto);
     Task<bool> DeleteAsync(int userId, int id);
-    Task<List<CategorySummaryDto>> GetSummaryAsync(int userId, int? month, int? year, string? category, int? week);
+    Task<List<CategorySummaryDto>> GetSummaryAsync(int userId, int? month, int? year, string? category, int? week, string? paidBy, bool? paid);
 }

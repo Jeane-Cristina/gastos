@@ -14,13 +14,15 @@ public class ExpenseService : IExpenseService
         _context = context;
     }
 
-    public async Task<PagedResult<Expense>> GetAllAsync(int userId, int? month, int? year, string? category, int? week, int page, int pageSize)
+    public async Task<PagedResult<Expense>> GetAllAsync(int userId, int? month, int? year, string? category, int? week, string? paidBy, bool? paid, int page, int pageSize)
     {
         var query = _context.Expenses.Where(e => e.UserId == userId).AsQueryable();
 
         if (month.HasValue) query = query.Where(e => e.Date.Month == month.Value);
         if (year.HasValue) query = query.Where(e => e.Date.Year == year.Value);
         if (!string.IsNullOrWhiteSpace(category)) query = query.Where(e => e.Category == category);
+        if (!string.IsNullOrWhiteSpace(paidBy)) query = query.Where(e => e.PaidBy == paidBy);
+        if (paid.HasValue) query = query.Where(e => e.Paid == paid.Value);
 
         query = query.OrderByDescending(e => e.Date);
 
@@ -41,7 +43,9 @@ public class ExpenseService : IExpenseService
             Description = dto.Description,
             Amount = dto.Amount,
             Category = CategoryNormalizer.Normalize(dto.Category),
-            Date = dto.Date
+            Date = dto.Date,
+            PaidBy = string.IsNullOrWhiteSpace(dto.PaidBy) ? null : dto.PaidBy.Trim(),
+            Paid = dto.Paid
         };
 
         _context.Expenses.Add(expense);
@@ -58,6 +62,8 @@ public class ExpenseService : IExpenseService
         expense.Amount = dto.Amount;
         expense.Category = CategoryNormalizer.Normalize(dto.Category);
         expense.Date = dto.Date;
+        expense.PaidBy = string.IsNullOrWhiteSpace(dto.PaidBy) ? null : dto.PaidBy.Trim();
+        expense.Paid = dto.Paid;
 
         await _context.SaveChangesAsync();
         return true;
@@ -73,13 +79,15 @@ public class ExpenseService : IExpenseService
         return true;
     }
 
-    public async Task<List<CategorySummaryDto>> GetSummaryAsync(int userId, int? month, int? year, string? category, int? week)
+    public async Task<List<CategorySummaryDto>> GetSummaryAsync(int userId, int? month, int? year, string? category, int? week, string? paidBy, bool? paid)
     {
         var query = _context.Expenses.Where(e => e.UserId == userId).AsQueryable();
 
         if (month.HasValue) query = query.Where(e => e.Date.Month == month.Value);
         if (year.HasValue) query = query.Where(e => e.Date.Year == year.Value);
         if (!string.IsNullOrWhiteSpace(category)) query = query.Where(e => e.Category == category);
+        if (!string.IsNullOrWhiteSpace(paidBy)) query = query.Where(e => e.PaidBy == paidBy);
+        if (paid.HasValue) query = query.Where(e => e.Paid == paid.Value);
 
         var expenses = await query.ToListAsync();
 

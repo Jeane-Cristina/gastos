@@ -15,4 +15,9 @@ public class ExpenseDto
     public string Category { get; set; } = string.Empty;
 
     public DateTime Date { get; set; }
+
+    [MaxLength(100, ErrorMessage = "O nome de quem pagou deve ter no máximo 100 caracteres.")]
+    public string? PaidBy { get; set; }
+
+    public bool? Paid { get; set; }
 }
