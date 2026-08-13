@@ -48,9 +48,9 @@ public class InsightController : ControllerBase
             }
         }
 
-        var analytics = await _analyticsService.GetAnalyticsAsync(userId);
+        var periodAnalytics = await _analyticsService.GetPeriodAnalyticsAsync(userId, dto.Period);
         var purchaseGoals = await _context.PurchaseGoals.Where(g => g.UserId == userId).ToListAsync();
-        var insightText = await _insightService.GenerateInsightAsync(analytics, profile, dto.Note, purchaseGoals);
+        var insightText = await _insightService.GenerateInsightForPeriodAsync(periodAnalytics, profile, dto.Note, purchaseGoals, dto.Period);
 
         if (profile == null)
         {
