@@ -1,6 +1,7 @@
-﻿using System.Text;
+﻿using GastosApi.Models;
+using System.Text;
 using System.Text.Json;
-using GastosApi.Models;
+using static GastosApi.Services.ExpenseAnalyticsService;
 
 namespace GastosApi.Services;
 
@@ -204,5 +205,79 @@ public class InsightService
             Console.WriteLine($"[GenerateJointInsightAsync] Erro real: {ex.GetType().Name} - {ex.Message}");
             throw;
         }
+    }
+
+    public async Task<string> GenerateInsightForPeriodAsync(PeriodAnalytics analytics, FinancialProfile? profile, string? note, List<PurchaseGoal> purchaseGoals, string period)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("Você é um assistente financeiro pessoal, direto e prático. Analise os dados abaixo e escreva uma recomendação em português, com tom acolhedor mas objetivo.");
+        sb.AppendLine();
+        sb.AppendLine($"⚠️ IMPORTANTE: os dados abaixo se referem EXCLUSIVAMENTE ao período: {analytics.PeriodLabel}. Mencione esse período explicitamente na sua análise, para deixar claro o intervalo de tempo considerado.");
+        sb.AppendLine();
+
+        if (profile != null)
+        {
+            sb.AppendLine($"Renda mensal: R$ {profile.MonthlyIncome}");
+            sb.AppendLine($"Já guardado até agora: R$ {profile.CurrentSavings}");
+            sb.AppendLine($"Meta de economia mensal: R$ {profile.SavingsGoal}");
+            sb.AppendLine($"Meta de economia anual: R$ {profile.AnnualSavingsGoal}");
+            sb.AppendLine($"Objetivo de curto prazo: {profile.ShortTermGoal}");
+            sb.AppendLine($"Objetivo de médio prazo: {profile.MediumTermGoal}");
+            sb.AppendLine($"Objetivo de longo prazo: {profile.LongTermGoal}");
+            sb.AppendLine();
+        }
+
+        sb.AppendLine($"Total gasto no período ({analytics.PeriodLabel}): R$ {analytics.TotalSpent}");
+        sb.AppendLine();
+        sb.AppendLine("Detalhamento dentro do período, com a categoria que mais pesou em cada parte:");
+        foreach (var b in analytics.Breakdown)
+            sb.AppendLine($"  {b.Label}: total R$ {b.Total}" + (b.TopCategory != null ? $" — maior gasto em '{b.TopCategory}' (R$ {b.TopCategoryAmount})" : ""));
+
+        sb.AppendLine();
+        sb.AppendLine("Gasto total por categoria no período:");
+        foreach (var c in analytics.SpendingByCategory)
+            sb.AppendLine($"  {c.Category}: R$ {c.Total}");
+
+        if (purchaseGoals.Any())
+        {
+            sb.AppendLine();
+            sb.AppendLine("Lista de compras desejadas/necessárias da pessoa:");
+            foreach (var g in purchaseGoals)
+                sb.AppendLine($"  [{(g.IsEssential ? "Necessidade" : "Desejo")}, prioridade {g.Priority}] {g.Description} — R$ {g.EstimatedCost}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(note))
+        {
+            sb.AppendLine();
+            sb.AppendLine($"Observação da pessoa: {note}");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("Estruture sua resposta EXATAMENTE neste formato, com esses quatro títulos:");
+        sb.AppendLine();
+        sb.AppendLine("DETALHAMENTO DO PERÍODO:");
+        sb.AppendLine("[mencione o período analisado explicitamente, e analise cada parte do detalhamento, apontando a mais crítica]");
+        sb.AppendLine();
+        sb.AppendLine("ONDE ECONOMIZAR:");
+        sb.AppendLine("[1-2 categorias específicas onde cortar geraria mais impacto]");
+        sb.AppendLine();
+        sb.AppendLine("ESTRATÉGIA PARA SUAS COMPRAS:");
+        sb.AppendLine("[se houver itens na lista de compras, sugira algo realista; se não houver, omita esta seção]");
+        sb.AppendLine();
+        sb.AppendLine("SUGESTÃO PRÁTICA:");
+        sb.AppendLine("[1 ação concreta]");
+
+        var apiKey = _config["Gemini:ApiKey"];
+        var requestBody = new { contents = new[] { new { parts = new[] { new { text = sb.ToString() } } } } };
+        var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
+        var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+
+        var response = await _httpClient.PostAsync(url, content);
+        response.EnsureSuccessStatusCode();
+        var responseJson = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(responseJson);
+
+        return doc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString()
+            ?? "Não foi possível gerar o insight desta vez.";
     }
 }
