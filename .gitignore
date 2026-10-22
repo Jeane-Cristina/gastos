@@ -1,4 +1,28 @@
+# Build
 bin/
 obj/
+out/
+TestResults/
+
+# IDEs
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+
+# Banco local
 *.db
+*.db-shm
+*.db-wal
+
+# Configuracao local e segredos
 appsettings.Development.json
+appsettings.*.local.json
+.env*
+!.env.example
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
