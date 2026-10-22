@@ -1,0 +1,8 @@
+**/bin/
+**/obj/
+.vs/
+.git/
+.vscode/
+GastosApi.Tests/
+*.user
+.env*
