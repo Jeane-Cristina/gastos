@@ -1,65 +1,52 @@
 # 💰 Controle de Gastos
 
-Aplicação full-stack de controle e planejamento financeiro pessoal, construída do zero como projeto de estudo — do primeiro "Hello World" da API até um sistema completo com autenticação, banco de dados na nuvem, agente de IA para insights financeiros, e instalação como app (PWA).
+Aplicação full-stack de controle e planejamento financeiro pessoal: API REST em C#/ASP.NET Core com autenticação JWT, banco PostgreSQL, testes automatizados e insights gerados por IA a partir das estatísticas reais de cada usuário (Gemini API). Instalável como app (PWA).
 
 **🔗 App em produção:** [gastos-web-ten.vercel.app](https://gastos-web-ten.vercel.app)
 **🔗 API em produção:** [gastos-kpca.onrender.com](https://gastos-kpca.onrender.com)
 **🔗 Repositório do frontend:** [github.com/Jeane-Cristina/gastos-web](https://github.com/Jeane-Cristina/gastos-web)
 
-> ⚠️ A API roda no plano gratuito do Render, que "dorme" após 15 minutos sem uso. O primeiro acesso do dia pode levar de 30 a 60 segundos para responder — depois disso, funciona normalmente.
+> ⚠️ A API roda no plano gratuito do Render, que "dorme" após 15 minutos sem uso. O primeiro acesso pode levar de 30 a 60 segundos para responder.
 
 ---
 
 ## 📌 Sobre o projeto
 
-Este é um app de controle financeiro pessoal completo: cadastro de despesas, metas de economia mensal/anual, carteira de investimentos com sugestões de IA, insights semanais personalizados, e importação automática de extrato bancário. Mas o objetivo real do projeto nunca foi só "criar um app de finanças" — foi usar um problema real e útil no meu dia a dia como pretexto para praticar, de ponta a ponta, o que um desenvolvedor **full-stack júnior/pleno** e **front-end pleno/sênior** precisa dominar: desde modelagem de banco de dados até deploy em produção e integração com IA generativa, passando por testes automatizados, autenticação, e boas práticas de arquitetura em camadas.
+Projeto pessoal que nasceu de uma necessidade real: acompanhar meus próprios gastos e metas de economia. Reúne cadastro de despesas, metas mensais e anuais, lista de desejos de compra, carteira de investimentos, contas conjuntas, importação de extrato bancário em CSV e insights de IA por período.
 
-Cada etapa deste projeto foi construída de forma incremental e documentada — no fim deste README, você encontra o passo a passo completo da jornada.
+Foi também um espaço para exercitar, de ponta a ponta, decisões de engenharia: modelagem de dados, arquitetura em camadas, autenticação, isolamento de dados por usuário, testes, deploy e integração com um modelo de linguagem.
 
 ---
 
-## 🛠️ Stack Técnica
+## 🛠️ Stack técnica
 
 ### Backend
 | Tecnologia | Uso |
 |---|---|
 | **C# / ASP.NET Core** | API REST |
-| **Entity Framework Core** | ORM, migrations |
-| **PostgreSQL** (via [Neon](https://neon.tech)) | Banco de dados de produção |
-| **Docker** | PostgreSQL local para desenvolvimento |
-| **JWT (JSON Web Token)** | Autenticação e autorização |
-| **BCrypt.Net** | Hash de senha |
-| **Google Gemini API** | Geração de insights financeiros e sugestões de investimento via IA |
-| **xUnit** | Testes automatizados |
-| **Swagger / OpenAPI** | Documentação interativa da API |
+| **Entity Framework Core** | ORM e migrations |
+| **PostgreSQL** ([Neon](https://neon.tech) em produção) | Banco de dados |
+| **Docker** | PostgreSQL local e imagem de deploy |
+| **JWT + BCrypt.Net** | Autenticação e hash de senha |
+| **Rate limiting + IMemoryCache** | Proteção de endpoints e cache de insights |
+| **Google Gemini API** | Redação dos insights financeiros |
+| **xUnit + SQLite em memória** | Testes automatizados |
+| **Swagger / OpenAPI** | Documentação interativa |
 
 ### Frontend
-| Tecnologia | Uso |
-|---|---|
-| **React + TypeScript** | Interface |
-| **Vite** | Build tool |
-| **Vitest + Testing Library** | Testes automatizados |
-| **vite-plugin-pwa** | Instalação como app (PWA) |
-| **Recharts** | Gráficos (pizza, radar, barras, linha) |
-| **React Markdown** | Renderização dos insights gerados pela IA |
-| **PapaParse** | Leitura de extratos bancários (CSV) |
-| **jsPDF + html2canvas** | Exportação de relatórios em PDF |
-| **Lucide React** | Ícones |
-| **CSS puro com Design Tokens** | Identidade visual própria, com suporte a modo escuro |
+React + TypeScript + Vite, Vitest + Testing Library, vite-plugin-pwa, Recharts, PapaParse, React Markdown. Detalhes no [README do frontend](https://github.com/Jeane-Cristina/gastos-web).
 
 ### Infraestrutura
 | Camada | Serviço |
 |---|---|
-| API | [Render](https://render.com) (free tier, via Docker) |
+| API | [Render](https://render.com) (Docker, plano gratuito) |
 | Frontend | [Vercel](https://vercel.com) |
-| Banco de dados | [Neon](https://neon.tech) (PostgreSQL serverless, free tier) |
-| IA | [Google AI Studio](https://aistudio.google.com) (Gemini API, free tier) |
+| Banco | [Neon](https://neon.tech) (PostgreSQL serverless) |
+| IA | [Google AI Studio](https://aistudio.google.com) (Gemini API) |
 
 ---
 
 ## 🏗️ Arquitetura
-
-O backend segue separação em camadas, um padrão comum em aplicações .NET profissionais:
 
 ```
 Controller  →  Service  →  DbContext (EF Core)  →  PostgreSQL
@@ -68,45 +55,62 @@ Controller  →  Service  →  DbContext (EF Core)  →  PostgreSQL
 (validação)   (isolada, testável)
 ```
 
-- **Controllers**: só traduzem requisição HTTP em chamada de Service e resposta HTTP — sem lógica de negócio
-- **Services**: contêm a lógica real (criar, filtrar, atualizar, deletar, analisar), isolados de qualquer detalhe de HTTP — o que permite testá-los sem simular uma requisição inteira
-- **DTOs**: separam o que a API expõe externamente do que existe no banco, com validação via Data Annotations
-- **Interfaces** (`IExpenseService`) permitem injeção de dependência e testes desacoplados da implementação
+- **Controllers** traduzem HTTP em chamada de Service e resposta HTTP, sem regra de negócio.
+- **Services** concentram a lógica (criar, filtrar, paginar, resumir, analisar) e não conhecem HTTP, o que permite testá-los diretamente.
+- **DTOs** separam o que a API expõe do que existe no banco, com validação por Data Annotations.
+- **Injeção de dependência** (`AddScoped`, `AddHttpClient<T>`, `AddMemoryCache`) e interfaces como `IExpenseService` mantêm as camadas desacopladas.
+- **Isolamento por usuário:** o `UserId` vem das claims do token JWT em cada requisição, nunca do corpo enviado pelo cliente. `[Authorize]` garante quem é o usuário; cada consulta filtra por `UserId` para garantir de quem é o dado.
+- **Desempenho:** paginação na listagem e índice composto `(UserId, Date)` para as consultas mais frequentes.
 
-Todo dado sensível do usuário (despesas, metas, investimentos) é isolado por `UserId`, extraído diretamente das claims do token JWT em cada requisição — nunca confiado a partir do que o cliente envia.
+### Como os insights de IA funcionam
 
-No frontend, a mesma filosofia de separação se repete: **services** (chamadas HTTP isoladas) → **hooks customizados** (estado e lógica reaproveitável) → **componentes** (só apresentação).
+Os insights são **gerados por IA a partir de estatísticas reais do usuário**. O fluxo:
 
-### Como o agente de IA funciona
+1. O backend calcula os números em C#/LINQ: gasto por semana, categoria dominante, comparação com metas e com o período anterior.
+2. Monta um prompt estruturado com esses números, o perfil financeiro e a lista de compras desejadas.
+3. Envia para o modelo (`gemini-flash-latest`), que interpreta os dados e redige a recomendação em linguagem natural.
 
-O "agente" não é um modelo treinado do zero — é uma integração de **RAG simplificado**: o backend calcula estatísticas reais do histórico de despesas (gasto por semana do mês, categoria dominante por semana, comparação com metas), monta um prompt estruturado com esses números, e envia pra API do Gemini, que interpreta os dados e devolve uma recomendação em linguagem natural. A "inteligência" sobre os hábitos financeiros vem do cálculo determinístico em C#/LINQ; o papel do modelo é só interpretar e comunicar.
+A parte analítica é determinística e testável; o modelo só interpreta e comunica. O usuário escolhe o período (semanal, mensal ou trimestral) e o resultado fica em cache por 7 dias para controlar custo e latência.
+
+Limitação conhecida: a API do Gemini às vezes responde `503` (indisponibilidade temporária). Uma política de retry com backoff exponencial está nos próximos passos.
+
+### Princípios de engajamento ético
+
+Antes de construir o lançamento rápido e a sequência de dias (streak), fiz uma pesquisa sobre engajamento em apps de hábito e finanças pessoais. As decisões de produto que saíram dela:
+
+- **Reforço positivo, sem punição:** a sequência celebra constância e não pune a pausa; falhar um dia não deve gerar culpa nem "perder tudo".
+- **Controle do usuário:** o usuário decide o que registrar, quando e com que frequência; nada é feito para prendê-lo ao app.
+- **Honestidade na comunicação:** os insights apontam padrões e opções, sem alarmismo nem linguagem de vergonha sobre gastos.
+- **Utilidade antes de retenção:** o objetivo é dar clareza financeira, não maximizar tempo de tela.
 
 ---
 
 ## ✨ Funcionalidades
 
 ### Núcleo
-- 🔐 **Autenticação completa**: cadastro e login com JWT, senha protegida por hash (BCrypt)
-- 📝 **CRUD completo de despesas**: criar, listar, editar (inline, direto no card) e excluir, com validação de dados no backend
-- 🔍 **Filtros combináveis**: por mês, categoria e semana do mês, via query parameters na API
-- 📥 **Importação de extrato bancário**: upload de CSV, com sugestão automática de categoria baseada no histórico do próprio usuário (reconhecimento por correspondência de texto, sem depender de IA para essa etapa)
+- 🔐 **Autenticação:** cadastro e login com JWT; senha com hash BCrypt
+- 📝 **CRUD de despesas** com validação, edição inline, campo "quem pagou" e status de pago
+- 🔍 **Filtros combináveis** por mês, ano, categoria, semana do mês, quem pagou e status de pagamento, com paginação
+- ⚡ **Lançamento rápido** e sequência de dias com registro
+- 🔁 **Despesas recorrentes** geradas automaticamente
+- 📥 **Importação de extrato (CSV):** sugestão de categoria baseada no histórico do próprio usuário, detecção de possíveis duplicatas e prévia editável antes de confirmar
 
 ### Planejamento financeiro
-- 🎯 **Metas de economia** mensal e anual, com acompanhamento visual (radar de progresso e indicador verde/âmbar/vermelho)
-- 🛍️ **Lista de compras** (desejos vs necessidades), usada como contexto para as recomendações da IA
-- 📈 **Carteira de investimentos**: registro de aplicações com sugestões educacionais de melhoria geradas por IA (sem recomendação de produto específico — só princípios gerais de diversificação)
-- 📊 **Histórico de metas mês a mês**, com gráfico de evolução
+- 🎯 **Metas** de economia mensal e anual, com orçamento por categoria
+- 🛍️ **Lista de compras desejadas**, usada como contexto nos insights
+- 📈 **Carteira de investimentos** com sugestões educacionais (princípios gerais de diversificação, sem indicar produto específico)
+- 📊 **Histórico de metas** mês a mês
+- 👥 **Contas conjuntas:** convite por nome de usuário com aceite, despesas compartilhadas, contribuição por membro, metas do grupo, sair e remover membro
 
 ### Insights e visualização
-- 🤖 **Insight semanal personalizado via IA**: análise de padrões de gasto por semana, pontos de economia, e estratégia para conciliar compras desejadas com as metas — respeitando limite de geração (1x por semana) para controle de custo de API
-- 📊 **Gráficos** (Recharts): distribuição de gastos por categoria (pizza), comparação com o mês anterior (barras), evolução de metas (linha)
-- 🌓 **Modo escuro**, com preferência persistida
-- 📄 **Exportação de relatório em PDF**
+- 🤖 **Insights de IA por período** (semanal, mensal, trimestral)
+- 📊 **Gráficos** de distribuição por categoria e evolução de metas
+- 🌓 **Modo escuro**
+- 📱 **PWA instalável** em Android e iOS
 
-### Infraestrutura e qualidade
-- 📱 **PWA instalável**: funciona como app nativo em Android e iOS, sem passar por loja de aplicativos
-- ✅ **Testado nos dois lados**: testes automatizados no frontend (Vitest) e backend (xUnit), cobrindo lógica pura, componentes e camada de Service — incluindo testes específicos de isolamento de dado entre usuários
-- ☁️ **Deploy real em produção**: API e frontend publicados, banco de dados gerenciado na nuvem, variáveis sensíveis fora do código-fonte
+### Qualidade
+- ✅ Testes automatizados nos dois lados (xUnit e Vitest), incluindo testes que provam o isolamento de dados entre usuários
+- ☁️ Deploy real: API, frontend e banco gerenciado, com segredos fora do código-fonte
 
 ---
 
@@ -116,9 +120,9 @@ O "agente" não é um modelo treinado do zero — é uma integração de **RAG s
 - [.NET SDK 10](https://dotnet.microsoft.com/download)
 - [Node.js 20+](https://nodejs.org)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- Uma chave gratuita da [Gemini API](https://aistudio.google.com/apikey) (opcional, só necessária para os insights de IA)
+- Chave gratuita da [Gemini API](https://aistudio.google.com/apikey) (opcional; só para os insights)
 
-### 1. Banco de dados (PostgreSQL via Docker)
+### 1. Banco de dados
 
 ```bash
 docker run --name gastos-postgres -e POSTGRES_PASSWORD=suasenha -e POSTGRES_DB=gastosdb -p 5432:5432 -d postgres:16
@@ -126,97 +130,86 @@ docker run --name gastos-postgres -e POSTGRES_PASSWORD=suasenha -e POSTGRES_DB=g
 
 ### 2. Backend
 
-```bash
-cd GastosApi
+```powershell
+git clone https://github.com/Jeane-Cristina/gastos
+cd gastos
 
-# Configure a connection string, a chave JWT e a chave da Gemini como variáveis de ambiente
 $env:ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=gastosdb;Username=postgres;Password=suasenha"
-$env:Jwt__Key = "sua-chave-secreta-de-pelo-menos-32-caracteres"
+$env:Jwt__Key = "uma-chave-secreta-de-pelo-menos-32-caracteres"
 $env:Gemini__ApiKey = "sua-chave-da-gemini-api"
 
-dotnet ef database update
-dotnet run
+dotnet ef database update --project GastosApi.csproj
+dotnet run --project GastosApi.csproj
 ```
 
-A API sobe em `http://localhost:5134`, com Swagger disponível em `/swagger`.
+A API sobe em `http://localhost:5134`, com Swagger em `/swagger`.
 
 ### 3. Frontend
 
-```bash
-cd gastos-web
-npm install
-npm run dev
-```
-
-O app abre em `http://localhost:5173`.
+Veja o [README do frontend](https://github.com/Jeane-Cristina/gastos-web).
 
 ---
 
-## 🧪 Rodando os testes
+## 🧪 Testes
 
-**Backend:**
 ```bash
 cd GastosApi.Tests
 dotnet test
 ```
 
-**Frontend:**
-```bash
-cd gastos-web
-npm run test
+Os testes de Service usam SQLite em memória, sem depender de servidor de banco. Cobrem criação com normalização de categoria, filtros, paginação, resumo por categoria e isolamento entre usuários.
+
+---
+
+## 📂 Estrutura do repositório
+
+```
+.
+├── Controllers/        # Endpoints REST
+├── Services/           # Regra de negócio (despesas, análises, insights, metas, contas conjuntas)
+├── Models/             # Entidades do banco
+├── Dtos/               # Objetos de transporte com validação
+├── Data/               # DbContext (EF Core)
+├── Migrations/         # Histórico de schema
+├── GastosApi.Tests/    # Testes xUnit
+└── Dockerfile          # Imagem de deploy (Render)
 ```
 
 ---
 
-## 📂 Estrutura do repositório (backend)
+## 🧭 Evolução do projeto
 
-```
-GastosApi/
-├── Controllers/       # Endpoints REST (Expenses, Auth, FinancialProfile, Goal, Investment, Insight)
-├── Services/           # Lógica de negócio (Expense, Analytics, Insight, InvestmentAdvisor, CategorySuggestion, Goal)
-├── Models/              # Entidades do banco de dados
-├── Dtos/                # Objetos de transporte, com validação
-├── Data/                 # DbContext (EF Core)
-├── Migrations/            # Histórico de mudanças de schema
-└── Dockerfile               # Imagem usada no deploy (Render)
+1. **Base:** modelagem, CRUD, camada de Service e DTOs com validação
+2. **Autenticação e isolamento:** JWT, cadastro multiusuário, vínculo de cada despesa ao seu dono, com teste automatizado cobrindo o caso
+3. **Produção:** PostgreSQL com Docker no desenvolvimento, Neon em produção, deploy no Render e na Vercel, PWA
+4. **Planejamento:** metas, lista de compras, investimentos e histórico
+5. **IA:** insights por período a partir de estatísticas calculadas no backend
+6. **Importação e produtividade:** CSV com detecção de duplicatas, lançamento rápido, recorrentes
+7. **Colaboração:** contas conjuntas com convite e aceite
 
-GastosApi.Tests/
-└── ExpenseServiceTests.cs, ExpenseDtoValidationTests.cs
-```
+### Desafios técnicos resolvidos
+
+- Falha de isolamento de dados entre usuários, corrigida com migração nullable → backfill → obrigatório, preservando dados de produção
+- Migração de SQLite para PostgreSQL sem quebrar os testes, graças à separação em camadas
+- Diferença de `DateTimeKind` entre .NET e PostgreSQL (`timestamp with time zone`)
+- Migrations aplicadas separadamente no banco local e no Neon
+- CORS entre ambientes (localhost, rede local, produção)
+- Parsing de extratos com formatos numéricos variados e créditos misturados a despesas
 
 ---
 
-## 🗺️ Jornada de aprendizado (o "porquê" deste projeto)
+## 🔮 Próximos passos
 
-Este projeto foi construído em sessões curtas de estudo (2-3h), evoluindo incrementalmente ao longo de semanas. Documentar essa jornada é, pra mim, tão importante quanto o código em si — é a prova de progresso real, não só o resultado final:
-
-1. **Fundamentos**: setup do projeto, modelagem inicial, conexão com banco de dados
-2. **CRUD completo**: endpoints REST, camada de Service, DTOs com validação (Data Annotations)
-3. **Frontend consumindo API real**: hooks customizados, tratamento de loading/erro, componentização
-4. **Autenticação**: JWT, hash de senha, cadastro multiusuário, proteção de rotas
-5. **Testes automatizados**: Vitest no frontend, xUnit no backend — mesma lógica (Arrange/Act/Assert), sintaxes diferentes
-6. **Identidade visual**: sistema de design próprio, não genérico, construído com CSS puro e tokens
-7. **Filtros e agregações**: query parameters, LINQ com `GroupBy`
-8. **Infraestrutura de produção**: Docker para desenvolvimento local, migração de SQLite para PostgreSQL, PWA, deploy real com variáveis de ambiente protegidas
-9. **Correção de isolamento de dado**: identificação e correção de uma falha de segurança em que despesas não eram vinculadas ao usuário dono — inclui teste automatizado específico para provar que a falha não volta a acontecer
-10. **Agente de IA**: integração com Gemini API via RAG simplificado, geração de insights financeiros a partir de dados reais do usuário, com controle de custo via cache semanal
-11. **Planejamento financeiro completo**: metas mensais/anuais, lista de compras, carteira de investimentos com sugestões educacionais de IA
-12. **Visualização de dados**: gráficos de distribuição, comparação temporal e evolução histórica, além de modo escuro e exportação em PDF
-13. **Importação de extrato bancário**: parsing de CSV com tratamento de formatos numéricos variados (separador de milhar/decimal, valores negativos) e categorização automática baseada em histórico
-
-### Principais desafios técnicos superados
-
-- Migração de motor de banco de dados (SQLite → PostgreSQL) sem quebrar testes existentes, graças à separação em camadas
-- Identificação e correção de uma falha real de isolamento de dado entre usuários, incluindo migração de schema com preservação de dado de produção (estratégia nullable → backfill → obrigatório)
-- Configuração de CORS entre múltiplos ambientes (localhost, rede local, produção)
-- Resolução de conflitos de merge e configuração de Git em ambiente com múltiplas identidades (pessoal/trabalho)
-- Debugging de autenticação JWT ponta a ponta, incluindo geração, validação e expiração de token
-- Parsing robusto de dados financeiros externos (extratos bancários) com formatos inconsistentes de número e presença de créditos/estornos misturados a despesas
-- Diagnóstico de falhas silenciosas de injeção de dependência em produção, via instrumentação de log
+- Retry com backoff exponencial nas chamadas ao Gemini (indisponibilidades `503` intermitentes)
+- Mover o filtro por semana do mês para a consulta SQL (hoje é aplicado em memória após a paginação, o que pode divergir o total da página)
+- Registro de despesas por WhatsApp: webhook implementado e verificado; aguardando número dedicado para uso em produção
+- Uso do refresh token no frontend
+- Recuperação de senha por e-mail
+- Funcionamento offline completo via Service Worker
 
 ---
 
 ## 👩‍💻 Autora
 
-**Jeane Cristina**
-[GitHub](https://github.com/Jeane-Cristina)
+**Jeane Cristina Oliveira Martins** — Desenvolvedora Full Stack (C#/.NET, React/TypeScript)
+[LinkedIn](https://linkedin.com/in/jeane-cristina-dev) · [GitHub](https://github.com/Jeane-Cristina)
