@@ -177,6 +177,56 @@ public class ExpenseServiceTests
         Assert.Single(page3.Items);
     }
 
+    // ---------- GetAll: semana do mês ----------
+
+    [Fact]
+    public async Task GetAllAsync_FiltersByWeek_BeforePagination()
+    {
+        await _service.CreateAsync(UserA, NewDto(description: "Semana 1", date: new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc)));
+        await _service.CreateAsync(UserA, NewDto(description: "Semana 2", date: new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc)));
+        await _service.CreateAsync(UserA, NewDto(description: "Semana 3", date: new DateTime(2026, 10, 18, 12, 0, 0, DateTimeKind.Utc)));
+        await _service.CreateAsync(UserA, NewDto(description: "Semana 4", date: new DateTime(2026, 10, 25, 12, 0, 0, DateTimeKind.Utc)));
+        await _service.CreateAsync(UserA, NewDto(description: "Ainda semana 4", date: new DateTime(2026, 10, 30, 12, 0, 0, DateTimeKind.Utc)));
+
+        // pageSize 1: se o filtro rodasse depois da paginação, a página poderia vir vazia e o total errado
+        var week4 = await GetAll(UserA, week: 4, page: 1, pageSize: 1);
+
+        Assert.Equal(2, week4.TotalCount);
+        Assert.Single(week4.Items);
+        Assert.Equal("Ainda semana 4", week4.Items[0].Description);
+    }
+
+    [Fact]
+    public async Task GetSummaryAsync_FiltersByWeek()
+    {
+        await _service.CreateAsync(UserA, NewDto(amount: 10m, date: new DateTime(2026, 10, 3, 12, 0, 0, DateTimeKind.Utc)));
+        await _service.CreateAsync(UserA, NewDto(amount: 90m, date: new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc)));
+
+        var summary = await _service.GetSummaryAsync(UserA, 10, 2026, null, 2, null, null);
+
+        Assert.Equal(90m, summary.Sum(s => s.Total));
+    }
+
+    // ---------- Normalização de categorias antigas ----------
+
+    [Fact]
+    public async Task NormalizeCategoriesAsync_UnifiesLegacyVariants_OnlyForTheUser()
+    {
+        _context.Expenses.AddRange(
+            new Expense { UserId = UserA, Description = "a", Amount = 1m, Category = "IA", Date = DateTime.UtcNow },
+            new Expense { UserId = UserA, Description = "b", Amount = 1m, Category = "Ia", Date = DateTime.UtcNow },
+            new Expense { UserId = UserA, Description = "c", Amount = 1m, Category = "Alimentação(Lazer)", Date = DateTime.UtcNow },
+            new Expense { UserId = UserB, Description = "d", Amount = 1m, Category = "IA", Date = DateTime.UtcNow });
+        await _context.SaveChangesAsync();
+
+        var changed = await _service.NormalizeCategoriesAsync(UserA);
+        var categories = (await GetAll(UserA)).Items.Select(e => e.Category).Distinct().OrderBy(c => c).ToList();
+
+        Assert.Equal(2, changed);
+        Assert.Equal(new[] { "Alimentação (Lazer)", "Ia" }, categories);
+        Assert.Equal("IA", _context.Expenses.Single(e => e.UserId == UserB).Category);
+    }
+
     // ---------- Update / Delete: isolamento ----------
 
     [Fact]

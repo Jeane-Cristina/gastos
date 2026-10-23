@@ -5,6 +5,8 @@ using System.Security.Claims;
 using GastosApi.Data;
 using GastosApi.Dtos;
 using GastosApi.Models;
+using GastosApi.Services;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace GastosApi.Controllers;
 
@@ -14,10 +16,12 @@ namespace GastosApi.Controllers;
 public class FinancialProfileController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IMemoryCache _cache;
 
-    public FinancialProfileController(AppDbContext context)
+    public FinancialProfileController(AppDbContext context, IMemoryCache cache)
     {
         _context = context;
+        _cache = cache;
     }
 
     private int GetUserId() =>
@@ -54,6 +58,7 @@ public class FinancialProfileController : ControllerBase
         profile.CurrentSavings = dto.CurrentSavings;
 
         await _context.SaveChangesAsync();
+        _cache.Remove(GoalReportCache.Key(userId));
         return Ok(profile);
     }
 }

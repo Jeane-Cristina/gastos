@@ -105,6 +105,13 @@ public class ExpensesController : ControllerBase
         return Ok(created);
     }
 
+    [HttpPost("normalize-categories")]
+    public async Task<IActionResult> NormalizeCategories()
+    {
+        var changed = await _service.NormalizeCategoriesAsync(GetUserId());
+        return Ok(new { changed });
+    }
+
     [HttpGet("compare-months")]
     public async Task<IActionResult> CompareMonths()
     {

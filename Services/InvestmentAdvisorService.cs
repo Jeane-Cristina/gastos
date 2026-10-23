@@ -33,9 +33,9 @@ public class InvestmentAdvisorService
             };
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
-            var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+            var requestJson = JsonSerializer.Serialize(requestBody);
 
-            var response = await _httpClient.PostAsync(url, content);
+            var response = await GeminiHttp.PostWithRetryAsync(_httpClient, url, () => new StringContent(requestJson, Encoding.UTF8, "application/json"));
             var responseJson = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
