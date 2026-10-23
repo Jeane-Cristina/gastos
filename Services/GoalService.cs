@@ -31,7 +31,8 @@ public class GoalService
             .SumAsync(e => e.Amount);
 
         var monthlySavingsAchieved = profile.MonthlyIncome - monthlySpent;
-        var annualSavingsAchieved = (profile.MonthlyIncome * 12) - annualSpent;
+        // renda acumulada só até o mês atual; usar 12 meses inflaria o resultado antes de dezembro
+        var annualSavingsAchieved = (profile.MonthlyIncome * now.Month) - annualSpent;
 
         var monthlyProgress = profile.SavingsGoal > 0
         ? (double)(monthlySavingsAchieved / profile.SavingsGoal) * 100

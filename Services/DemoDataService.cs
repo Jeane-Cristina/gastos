@@ -20,24 +20,28 @@ public class DemoDataService
         "Na conta demo a IA mostra apenas o exemplo pronto. Crie uma conta para gerar insights de verdade.";
 
     private const decimal MonthlyIncome = 6500m;
-    private const decimal MonthlySavingsGoal = 1200m;
+    private const decimal MonthlySavingsGoal = 2200m;
 
-    private sealed record Item(string Description, string Category, decimal Amount, int Day);
+    private sealed record Item(string Description, string Category, decimal Amount, int Day, bool InCurrentMonth);
 
     private static readonly Item[] Template =
     {
-        new("Supermercado Bom Preço", "Alimentação", 412.80m, 3),
-        new("Padaria Pão Quente", "Alimentação", 28.50m, 5),
-        new("Restaurante Sabor Caseiro", "Lazer", 86.00m, 8),
-        new("Combustível", "Transporte", 220.00m, 9),
-        new("Farmácia Saúde+", "Saúde", 64.90m, 11),
-        new("Streaming de filmes", "Lazer", 39.90m, 12),
-        new("Aplicativo de transporte", "Transporte", 47.30m, 14),
-        new("Curso online de inglês", "Educação", 119.00m, 15),
-        new("Supermercado Bom Preço", "Alimentação", 358.20m, 18),
-        new("Cinema", "Lazer", 52.00m, 20),
-        new("Academia", "Saúde", 99.90m, 22),
-        new("Lanchonete", "Alimentação", 34.70m, 25),
+        new("Aluguel", "Moradia", 1800.00m, 5, true),
+        new("Condomínio", "Moradia", 450.00m, 5, true),
+        new("Conta de energia", "Moradia", 240.00m, 10, true),
+        new("Internet", "Moradia", 120.00m, 10, true),
+        new("Supermercado Bom Preço", "Alimentação", 412.80m, 3, true),
+        new("Padaria Pão Quente", "Alimentação", 28.50m, 5, true),
+        new("Restaurante Sabor Caseiro", "Lazer", 86.00m, 8, true),
+        new("Combustível", "Transporte", 220.00m, 9, true),
+        new("Farmácia Saúde+", "Saúde", 64.90m, 11, true),
+        new("Streaming de filmes", "Lazer", 39.90m, 12, true),
+        new("Aplicativo de transporte", "Transporte", 47.30m, 14, true),
+        new("Curso online de inglês", "Educação", 119.00m, 15, true),
+        new("Academia", "Saúde", 99.90m, 22, true),
+        new("Supermercado Bom Preço", "Alimentação", 358.20m, 18, false),
+        new("Cinema", "Lazer", 52.00m, 20, false),
+        new("Lanchonete", "Alimentação", 34.70m, 25, false),
     };
 
     private readonly AppDbContext _context;
@@ -130,13 +134,16 @@ public class DemoDataService
     {
         var currentMonth = new List<Expense>();
 
-        for (var back = 0; back <= 3; back++)
+        // o ano inteiro até hoje (o relatório anual soma o ano todo), com no mínimo 3 meses para o gráfico de histórico
+        var pastMonths = Math.Max(now.Month - 1, 3);
+
+        for (var back = 0; back <= pastMonths; back++)
         {
             var first = new DateTime(now.Year, now.Month, 1, 12, 0, 0, DateTimeKind.Utc).AddMonths(-back);
             var isCurrent = back == 0;
             var maxDay = isCurrent ? now.Day : DateTime.DaysInMonth(first.Year, first.Month);
-            var factor = isCurrent ? 1.00m : 0.92m + 0.07m * back; // meses anteriores variam um pouco
-            var items = isCurrent ? Template.Take(8) : Template;
+            var factor = isCurrent ? 1.00m : 0.93m + 0.04m * (back % 4); // meses anteriores variam um pouco
+            var items = isCurrent ? Template.Where(t => t.InCurrentMonth) : Template;
 
             var monthTotal = 0m;
             foreach (var item in items)
@@ -219,7 +226,9 @@ public class DemoDataService
     private static string BuildSampleInsight(List<Expense> currentMonth)
     {
         var spent = currentMonth.Sum(e => e.Amount);
+        // Moradia é custo fixo; o foco do insight fica nos gastos variáveis
         var top = currentMonth
+            .Where(e => e.Category != "Moradia")
             .GroupBy(e => e.Category)
             .Select(g => new { Category = g.Key, Total = g.Sum(e => e.Amount) })
             .OrderByDescending(g => g.Total)
@@ -227,7 +236,7 @@ public class DemoDataService
 
         return
 $@"DETALHAMENTO DO PERÍODO:
-Este é um insight de exemplo da conta demonstração. Neste mês você gastou {Brl(spent)} de uma renda de {Brl(MonthlyIncome)}, o que mantém a meta de economia de {Brl(MonthlySavingsGoal)} ao alcance. A categoria que mais pesou foi **{top.Category}** ({Brl(top.Total)}).
+Este é um insight de exemplo da conta demonstração. Neste mês você gastou {Brl(spent)} de uma renda de {Brl(MonthlyIncome)}, o que mantém a meta de economia de {Brl(MonthlySavingsGoal)} ao alcance. Entre os gastos variáveis, **{top.Category}** foi a categoria que mais pesou ({Brl(top.Total)}); a Moradia é custo fixo.
 
 ONDE ECONOMIZAR:
 - **{top.Category}**: é onde está o maior volume. Comparar preços e planejar a lista de compras costuma reduzir esse valor sem cortar o essencial.
@@ -235,7 +244,7 @@ ONDE ECONOMIZAR:
 - **Transporte**: passou do limite definido. Agrupar deslocamentos ajuda a reduzir o gasto.
 
 ESTRATÉGIA PARA SUAS COMPRAS:
-O **Notebook novo** ({Brl(4200m)}) é prioridade alta. Guardando cerca de {Brl(700m)} por mês, ele cabe em 6 meses sem comprometer a meta. A **Cadeira ergonômica** é uma necessidade e pode vir antes.
+O **Notebook novo** ({Brl(4200m)}) é prioridade alta. Guardando cerca de {Brl(350m)} por mês, ele cabe em 12 meses sem comprometer a meta. A **Cadeira ergonômica** é uma necessidade e pode vir antes.
 
 SUGESTÃO PRÁTICA:
 Defina um limite semanal para Lazer e acompanhe pela tela de orçamento por categoria. Para gerar insights com os seus próprios dados, crie uma conta.";
