@@ -47,11 +47,20 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<IExpenseService, ExpenseService>();
 
+// Origens permitidas: as fixas abaixo + as listadas (separadas por vírgula) na
+// configuração Cors:AllowedOrigins (no Render: variável Cors__AllowedOrigins).
+var allowedOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? "")
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .Select(o => o.TrimEnd('/'))
+    .Concat(new[] { "http://localhost:5173", "https://gastos-web-ten.vercel.app" })
+    .Distinct()
+    .ToArray();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReact", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "https://gastos-web-ten.vercel.app").AllowAnyHeader()
+        policy.WithOrigins(allowedOrigins).AllowAnyHeader()
               .AllowAnyMethod();
     });
 });
