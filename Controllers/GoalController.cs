@@ -31,7 +31,7 @@ public class GoalController : ControllerBase
     public async Task<IActionResult> GetReport()
     {
         var userId = GetUserId();
-        var cacheKey = $"goal-report-{userId}";
+        var cacheKey = GoalReportCache.Key(userId);
 
         if (_cache.TryGetValue(cacheKey, out object? cached))
             return Ok(cached);

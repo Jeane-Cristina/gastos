@@ -2,16 +2,40 @@
 using GastosApi.Data;
 using GastosApi.Models;
 using GastosApi.Dtos;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace GastosApi.Services;
 
 public class ExpenseService : IExpenseService
 {
     private readonly AppDbContext _context;
+    private readonly IMemoryCache? _cache;
 
-    public ExpenseService(AppDbContext context)
+    // O cache é opcional para que os testes possam criar o serviço só com o DbContext.
+    public ExpenseService(AppDbContext context, IMemoryCache? cache = null)
     {
         _context = context;
+        _cache = cache;
+    }
+
+    private void InvalidateGoalReport(int userId) => _cache?.Remove(GoalReportCache.Key(userId));
+
+    /// <summary>
+    /// Semana do mês aplicada na consulta SQL (antes da paginação):
+    /// 1 = dias 1–7, 2 = 8–14, 3 = 15–21, 4 = dia 22 em diante.
+    /// </summary>
+    private static IQueryable<Expense> ApplyWeek(IQueryable<Expense> query, int? week)
+    {
+        if (!week.HasValue) return query;
+
+        return week.Value switch
+        {
+            1 => query.Where(e => e.Date.Day <= 7),
+            2 => query.Where(e => e.Date.Day >= 8 && e.Date.Day <= 14),
+            3 => query.Where(e => e.Date.Day >= 15 && e.Date.Day <= 21),
+            4 => query.Where(e => e.Date.Day >= 22),
+            _ => query
+        };
     }
 
     public async Task<PagedResult<Expense>> GetAllAsync(int userId, int? month, int? year, string? category, int? week, string? paidBy, bool? paid, int page, int pageSize)
@@ -23,14 +47,12 @@ public class ExpenseService : IExpenseService
         if (!string.IsNullOrWhiteSpace(category)) query = query.Where(e => e.Category == category);
         if (!string.IsNullOrWhiteSpace(paidBy)) query = query.Where(e => e.PaidBy == paidBy);
         if (paid.HasValue) query = query.Where(e => e.Paid == paid.Value);
+        query = ApplyWeek(query, week);
 
         query = query.OrderByDescending(e => e.Date);
 
         var totalCount = await query.CountAsync();
         var items = await query.Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();
-
-        if (week.HasValue)
-            items = items.Where(e => ((e.Date.Day - 1) / 7) + 1 == week.Value).ToList();
 
         return new PagedResult<Expense> { Items = items, TotalCount = totalCount, Page = page, PageSize = pageSize };
     }
@@ -50,6 +72,7 @@ public class ExpenseService : IExpenseService
 
         _context.Expenses.Add(expense);
         await _context.SaveChangesAsync();
+        InvalidateGoalReport(userId);
         return expense;
     }
 
@@ -66,6 +89,7 @@ public class ExpenseService : IExpenseService
         expense.Paid = dto.Paid;
 
         await _context.SaveChangesAsync();
+        InvalidateGoalReport(userId);
         return true;
     }
 
@@ -76,7 +100,33 @@ public class ExpenseService : IExpenseService
 
         _context.Expenses.Remove(expense);
         await _context.SaveChangesAsync();
+        InvalidateGoalReport(userId);
         return true;
+    }
+
+    /// <summary>Reaplica o normalizador às categorias antigas do usuário ("IA"/"Ia", "Alimentação(Lazer)"...). Devolve quantas mudaram.</summary>
+    public async Task<int> NormalizeCategoriesAsync(int userId)
+    {
+        var expenses = await _context.Expenses.Where(e => e.UserId == userId).ToListAsync();
+        var changed = 0;
+
+        foreach (var expense in expenses)
+        {
+            var normalized = CategoryNormalizer.Normalize(expense.Category);
+            if (normalized != expense.Category)
+            {
+                expense.Category = normalized;
+                changed++;
+            }
+        }
+
+        if (changed > 0)
+        {
+            await _context.SaveChangesAsync();
+            InvalidateGoalReport(userId);
+        }
+
+        return changed;
     }
 
     public async Task<List<CategorySummaryDto>> GetSummaryAsync(int userId, int? month, int? year, string? category, int? week, string? paidBy, bool? paid)
@@ -88,11 +138,9 @@ public class ExpenseService : IExpenseService
         if (!string.IsNullOrWhiteSpace(category)) query = query.Where(e => e.Category == category);
         if (!string.IsNullOrWhiteSpace(paidBy)) query = query.Where(e => e.PaidBy == paidBy);
         if (paid.HasValue) query = query.Where(e => e.Paid == paid.Value);
+        query = ApplyWeek(query, week);
 
         var expenses = await query.ToListAsync();
-
-        if (week.HasValue)
-            expenses = expenses.Where(e => ((e.Date.Day - 1) / 7) + 1 == week.Value).ToList();
 
         return expenses
             .GroupBy(e => e.Category)

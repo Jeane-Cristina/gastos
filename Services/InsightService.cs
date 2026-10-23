@@ -30,9 +30,9 @@ public class InsightService
         };
 
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
-        var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+        var requestJson = JsonSerializer.Serialize(requestBody);
 
-        var response = await _httpClient.PostAsync(url, content);
+        var response = await GeminiHttp.PostWithRetryAsync(_httpClient, url, () => new StringContent(requestJson, Encoding.UTF8, "application/json"));
         response.EnsureSuccessStatusCode();
 
         var responseJson = await response.Content.ReadAsStringAsync();
@@ -68,9 +68,9 @@ public class InsightService
         var apiKey = _config["Gemini:ApiKey"];
         var requestBody = new { contents = new[] { new { parts = new[] { new { text = sb.ToString() } } } } };
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
-        var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+        var requestJson = JsonSerializer.Serialize(requestBody);
 
-        var response = await _httpClient.PostAsync(url, content);
+        var response = await GeminiHttp.PostWithRetryAsync(_httpClient, url, () => new StringContent(requestJson, Encoding.UTF8, "application/json"));
         response.EnsureSuccessStatusCode();
         var responseJson = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(responseJson);
@@ -184,9 +184,9 @@ public class InsightService
 
             var requestBody = new { contents = new[] { new { parts = new[] { new { text = sb.ToString() } } } } };
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
-            var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+            var requestJson = JsonSerializer.Serialize(requestBody);
 
-            var response = await _httpClient.PostAsync(url, content);
+            var response = await GeminiHttp.PostWithRetryAsync(_httpClient, url, () => new StringContent(requestJson, Encoding.UTF8, "application/json"));
             var responseJson = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
@@ -270,9 +270,9 @@ public class InsightService
         var apiKey = _config["Gemini:ApiKey"];
         var requestBody = new { contents = new[] { new { parts = new[] { new { text = sb.ToString() } } } } };
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={apiKey}";
-        var content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+        var requestJson = JsonSerializer.Serialize(requestBody);
 
-        var response = await _httpClient.PostAsync(url, content);
+        var response = await GeminiHttp.PostWithRetryAsync(_httpClient, url, () => new StringContent(requestJson, Encoding.UTF8, "application/json"));
         response.EnsureSuccessStatusCode();
         var responseJson = await response.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(responseJson);
