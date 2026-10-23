@@ -80,6 +80,9 @@ public class InvestmentController : ControllerBase
     [HttpGet("suggestions")]
     public async Task<IActionResult> GetSuggestions()
     {
+        if (DemoDataService.IsDemoUsername(User.FindFirstValue(ClaimTypes.Name)))
+            return StatusCode(403, new { message = DemoDataService.AiDisabledMessage });
+
         var userId = GetUserId();
         var investments = await _context.Investments.Where(i => i.UserId == userId).ToListAsync();
         var profile = await _context.FinancialProfiles.FirstOrDefaultAsync(p => p.UserId == userId);

@@ -27,42 +27,16 @@ public class InsightController : ControllerBase
     private int GetUserId() =>
         int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-    // O período do insight fica guardado no próprio texto ("[[period:monthly]]" + quebra de linha),
-    // assim o cache respeita o período escolhido sem precisar de migration no banco.
-    private const string PeriodMarker = "[[period:";
-
-    private static string NormalizePeriod(string? period) =>
-        (period ?? "").Trim().ToLowerInvariant() switch
-        {
-            "weekly" => "weekly",
-            "quarterly" => "quarterly",
-            _ => "monthly"
-        };
-
-    private static string WithPeriod(string period, string text) => $"{PeriodMarker}{period}]]\n{text}";
-
-    private static (string? Period, string Text) SplitStored(string? stored)
-    {
-        if (string.IsNullOrEmpty(stored)) return (null, string.Empty);
-        if (!stored.StartsWith(PeriodMarker, StringComparison.Ordinal)) return (null, stored);
-
-        var end = stored.IndexOf("]]", StringComparison.Ordinal);
-        if (end < 0) return (null, stored);
-
-        var period = stored.Substring(PeriodMarker.Length, end - PeriodMarker.Length);
-        return (period, stored.Substring(end + 2).TrimStart('\r', '\n'));
-    }
-
     [HttpPost("generate")]
     public async Task<IActionResult> Generate(GenerateInsightDto dto)
     {
         var userId = GetUserId();
-        var period = NormalizePeriod(dto.Period);
+        var period = StoredInsight.NormalizePeriod(dto.Period);
         var profile = await _context.FinancialProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (profile != null && profile.LastInsightGeneratedAt.HasValue)
         {
-            var (cachedPeriod, cachedText) = SplitStored(profile.LastInsight);
+            var (cachedPeriod, cachedText) = StoredInsight.Split(profile.LastInsight);
             var daysSinceLast = (DateTime.UtcNow - profile.LastInsightGeneratedAt.Value).TotalDays;
 
             // Só reaproveita o texto se for do mesmo período pedido.
@@ -79,6 +53,10 @@ public class InsightController : ControllerBase
             }
         }
 
+        // Na conta demo a IA só mostra o exemplo pronto, para não gastar a cota do Gemini.
+        if (DemoDataService.IsDemoUsername(User.FindFirstValue(ClaimTypes.Name)))
+            return StatusCode(403, new { message = DemoDataService.AiDisabledMessage });
+
         var periodAnalytics = await _analyticsService.GetPeriodAnalyticsAsync(userId, period);
         var purchaseGoals = await _context.PurchaseGoals.Where(g => g.UserId == userId).ToListAsync();
         var insightText = await _insightService.GenerateInsightForPeriodAsync(periodAnalytics, profile, dto.Note, purchaseGoals, period);
@@ -89,7 +67,7 @@ public class InsightController : ControllerBase
             _context.FinancialProfiles.Add(profile);
         }
 
-        profile.LastInsight = WithPeriod(period, insightText);
+        profile.LastInsight = StoredInsight.Wrap(period, insightText);
         profile.LastInsightGeneratedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
@@ -121,7 +99,7 @@ public class InsightController : ControllerBase
         if (profile == null || string.IsNullOrEmpty(profile.LastInsight))
             return Ok(new { insight = (string?)null, period = (string?)null, nextAvailableAt = (DateTime?)null });
 
-        var (period, text) = SplitStored(profile.LastInsight);
+        var (period, text) = StoredInsight.Split(profile.LastInsight);
         var nextAvailable = profile.LastInsightGeneratedAt?.AddDays(7);
         return Ok(new { insight = text, period, nextAvailableAt = nextAvailable });
     }
@@ -129,6 +107,9 @@ public class InsightController : ControllerBase
     [HttpPost("ask")]
     public async Task<IActionResult> Ask(ChatQueryDto dto)
     {
+        if (DemoDataService.IsDemoUsername(User.FindFirstValue(ClaimTypes.Name)))
+            return StatusCode(403, new { message = DemoDataService.AiDisabledMessage });
+
         var userId = GetUserId();
         var analytics = await _analyticsService.GetAnalyticsAsync(userId);
         var profile = await _context.FinancialProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
