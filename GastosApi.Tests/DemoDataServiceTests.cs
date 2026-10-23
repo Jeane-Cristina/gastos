@@ -20,7 +20,7 @@ public class DemoDataServiceTests
         Assert.NotNull(user);
         Assert.True(DemoDataService.IsDemoUsername(user!.Username));
         Assert.True(await context.Expenses.CountAsync(e => e.UserId == user.Id) >= 5);
-        Assert.Equal(3, await context.GoalSnapshots.CountAsync(s => s.UserId == user.Id));
+        Assert.Equal(Now.Month - 1, await context.GoalSnapshots.CountAsync(s => s.UserId == user.Id)); // um por mês passado do ano
         Assert.Equal(5, await context.CategoryBudgets.CountAsync(b => b.UserId == user.Id));
         Assert.NotEmpty(await context.Investments.Where(i => i.UserId == user.Id).ToListAsync());
         Assert.NotEmpty(await context.PurchaseGoals.Where(g => g.UserId == user.Id).ToListAsync());
