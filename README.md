@@ -70,9 +70,9 @@ Os insights são **gerados por IA a partir de estatísticas reais do usuário**.
 2. Monta um prompt estruturado com esses números, o perfil financeiro e a lista de compras desejadas.
 3. Envia para o modelo (`gemini-flash-latest`), que interpreta os dados e redige a recomendação em linguagem natural.
 
-A parte analítica é determinística e testável; o modelo só interpreta e comunica. O usuário escolhe o período (semanal, mensal ou trimestral) e o resultado fica em cache por 7 dias para controlar custo e latência.
+A parte analítica é determinística e testável; o modelo só interpreta e comunica. O usuário escolhe o período (semanal, mensal ou trimestral) e o resultado fica em cache por 7 dias, por período, para controlar custo e latência.
 
-Limitação conhecida: a API do Gemini às vezes responde `503` (indisponibilidade temporária). Uma política de retry com backoff exponencial está nos próximos passos.
+A API do Gemini às vezes responde `503` (indisponibilidade temporária). As chamadas têm até 3 tentativas com backoff exponencial (1 s e 2 s) para falhas temporárias (`429` e `5xx`).
 
 ### Princípios de engajamento ético
 
@@ -200,11 +200,10 @@ Os testes de Service usam SQLite em memória, sem depender de servidor de banco.
 
 ## 🔮 Próximos passos
 
-- Retry com backoff exponencial nas chamadas ao Gemini (indisponibilidades `503` intermitentes)
-- Mover o filtro por semana do mês para a consulta SQL (hoje é aplicado em memória após a paginação, o que pode divergir o total da página)
 - Registro de despesas por WhatsApp: webhook implementado e verificado; aguardando número dedicado para uso em produção
 - Uso do refresh token no frontend
-- Recuperação de senha por e-mail
+- Domínio próprio no Resend para o e-mail de recuperação de senha (hoje usa o remetente de teste, que só entrega para o dono da conta Resend)
+- Job no servidor para salvar o histórico mensal (hoje o registro é automático, mas acontece quando o usuário abre o app)
 - Funcionamento offline completo via Service Worker
 
 ---

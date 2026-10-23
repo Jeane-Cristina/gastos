@@ -50,6 +50,23 @@ public class InvestmentController : ControllerBase
         return Ok(investment);
     }
 
+    [HttpPut("{id}")]
+    public async Task<IActionResult> Update(int id, InvestmentDto dto)
+    {
+        var investment = await _context.Investments.FirstOrDefaultAsync(i => i.Id == id && i.UserId == GetUserId());
+        if (investment == null) return NotFound();
+
+        investment.Name = dto.Name;
+        investment.Type = dto.Type;
+        investment.AmountInvested = dto.AmountInvested;
+        investment.CurrentValue = dto.CurrentValue;
+        investment.AnnualReturnRate = dto.AnnualReturnRate;
+        investment.RiskProfile = dto.RiskProfile;
+
+        await _context.SaveChangesAsync();
+        return Ok(investment);
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(int id)
     {
@@ -63,6 +80,9 @@ public class InvestmentController : ControllerBase
     [HttpGet("suggestions")]
     public async Task<IActionResult> GetSuggestions()
     {
+        if (DemoDataService.IsDemoUsername(User.FindFirstValue(ClaimTypes.Name)))
+            return StatusCode(403, new { message = DemoDataService.AiDisabledMessage });
+
         var userId = GetUserId();
         var investments = await _context.Investments.Where(i => i.UserId == userId).ToListAsync();
         var profile = await _context.FinancialProfiles.FirstOrDefaultAsync(p => p.UserId == userId);

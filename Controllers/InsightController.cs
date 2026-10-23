@@ -31,26 +31,35 @@ public class InsightController : ControllerBase
     public async Task<IActionResult> Generate(GenerateInsightDto dto)
     {
         var userId = GetUserId();
+        var period = StoredInsight.NormalizePeriod(dto.Period);
         var profile = await _context.FinancialProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (profile != null && profile.LastInsightGeneratedAt.HasValue)
         {
+            var (cachedPeriod, cachedText) = StoredInsight.Split(profile.LastInsight);
             var daysSinceLast = (DateTime.UtcNow - profile.LastInsightGeneratedAt.Value).TotalDays;
-            if (daysSinceLast < 7)
+
+            // Só reaproveita o texto se for do mesmo período pedido.
+            if (daysSinceLast < 7 && cachedPeriod == period && !string.IsNullOrEmpty(cachedText))
             {
                 var nextAvailable = profile.LastInsightGeneratedAt.Value.AddDays(7);
                 return Ok(new
                 {
-                    insight = profile.LastInsight,
+                    insight = cachedText,
+                    period,
                     cached = true,
                     nextAvailableAt = nextAvailable
                 });
             }
         }
 
-        var periodAnalytics = await _analyticsService.GetPeriodAnalyticsAsync(userId, dto.Period);
+        // Na conta demo a IA só mostra o exemplo pronto, para não gastar a cota do Gemini.
+        if (DemoDataService.IsDemoUsername(User.FindFirstValue(ClaimTypes.Name)))
+            return StatusCode(403, new { message = DemoDataService.AiDisabledMessage });
+
+        var periodAnalytics = await _analyticsService.GetPeriodAnalyticsAsync(userId, period);
         var purchaseGoals = await _context.PurchaseGoals.Where(g => g.UserId == userId).ToListAsync();
-        var insightText = await _insightService.GenerateInsightForPeriodAsync(periodAnalytics, profile, dto.Note, purchaseGoals, dto.Period);
+        var insightText = await _insightService.GenerateInsightForPeriodAsync(periodAnalytics, profile, dto.Note, purchaseGoals, period);
 
         if (profile == null)
         {
@@ -58,11 +67,11 @@ public class InsightController : ControllerBase
             _context.FinancialProfiles.Add(profile);
         }
 
-        profile.LastInsight = insightText;
+        profile.LastInsight = StoredInsight.Wrap(period, insightText);
         profile.LastInsightGeneratedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        return Ok(new { insight = insightText, cached = false, nextAvailableAt = DateTime.UtcNow.AddDays(7) });
+        return Ok(new { insight = insightText, period, cached = false, nextAvailableAt = DateTime.UtcNow.AddDays(7) });
     }
 
     [HttpPost("reset")]
@@ -88,15 +97,19 @@ public class InsightController : ControllerBase
         var profile = await _context.FinancialProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
 
         if (profile == null || string.IsNullOrEmpty(profile.LastInsight))
-            return Ok(new { insight = (string?)null, nextAvailableAt = (DateTime?)null });
+            return Ok(new { insight = (string?)null, period = (string?)null, nextAvailableAt = (DateTime?)null });
 
+        var (period, text) = StoredInsight.Split(profile.LastInsight);
         var nextAvailable = profile.LastInsightGeneratedAt?.AddDays(7);
-        return Ok(new { insight = profile.LastInsight, nextAvailableAt = nextAvailable });
+        return Ok(new { insight = text, period, nextAvailableAt = nextAvailable });
     }
 
     [HttpPost("ask")]
     public async Task<IActionResult> Ask(ChatQueryDto dto)
     {
+        if (DemoDataService.IsDemoUsername(User.FindFirstValue(ClaimTypes.Name)))
+            return StatusCode(403, new { message = DemoDataService.AiDisabledMessage });
+
         var userId = GetUserId();
         var analytics = await _analyticsService.GetAnalyticsAsync(userId);
         var profile = await _context.FinancialProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
