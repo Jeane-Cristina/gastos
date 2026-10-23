@@ -17,6 +17,7 @@ builder.Services.AddControllers();
 builder.Services.AddScoped<ExpenseAnalyticsService>();
 builder.Services.AddHttpClient<InsightService>();
 builder.Services.AddScoped<GoalService>();
+builder.Services.AddScoped<DemoDataService>();
 builder.Services.AddScoped<CategorySuggestionService>();
 builder.Services.AddHttpClient<InvestmentAdvisorService>();
 builder.Services.AddScoped<RecurringExpenseService>();
@@ -35,6 +36,14 @@ builder.Services.AddRateLimiter(options =>
     options.AddFixedWindowLimiter("LoginPolicy", opt =>
     {
         opt.PermitLimit = 5;
+        opt.Window = TimeSpan.FromMinutes(1);
+        opt.QueueLimit = 0;
+    });
+
+    // Cada clique em "Ver demonstração" cria um usuário com ~100 linhas; o limite evita abuso.
+    options.AddFixedWindowLimiter("DemoPolicy", opt =>
+    {
+        opt.PermitLimit = 30;
         opt.Window = TimeSpan.FromMinutes(1);
         opt.QueueLimit = 0;
     });
@@ -103,28 +112,4 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.MapControllers();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
-
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

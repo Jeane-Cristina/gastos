@@ -15,12 +15,29 @@ public class AuthController : ControllerBase
     private readonly AppDbContext _context;
     private readonly TokenService _tokenService;
     private readonly EmailService _emailService;
+    private readonly DemoDataService _demoService;
 
-    public AuthController(AppDbContext context, TokenService tokenService, EmailService emailService)
+    public AuthController(AppDbContext context, TokenService tokenService, EmailService emailService, DemoDataService demoService)
     {
         _context = context;
         _tokenService = tokenService;
         _emailService = emailService;
+        _demoService = demoService;
+    }
+
+    /// <summary>Cria uma conta de demonstração temporária (24 h) com dados fictícios e devolve o token.</summary>
+    [HttpPost("demo")]
+    [EnableRateLimiting("DemoPolicy")]
+    public async Task<IActionResult> Demo()
+    {
+        var user = await _demoService.CreateDemoUserAsync();
+        if (user == null)
+        {
+            return StatusCode(503, new { message = "A demonstração está lotada no momento. Tente novamente em alguns minutos ou crie uma conta." });
+        }
+
+        var token = _tokenService.GenerateToken(user);
+        return Ok(new { token, demo = true });
     }
 
     [HttpPost("login")]
