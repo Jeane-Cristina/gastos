@@ -9,5 +9,6 @@ public interface IExpenseService
     Task<Expense> CreateAsync(int userId, ExpenseDto dto);
     Task<bool> UpdateAsync(int userId, int id, ExpenseDto dto);
     Task<bool> DeleteAsync(int userId, int id);
+    Task<int> NormalizeCategoriesAsync(int userId);
     Task<List<CategorySummaryDto>> GetSummaryAsync(int userId, int? month, int? year, string? category, int? week, string? paidBy, bool? paid);
 }
