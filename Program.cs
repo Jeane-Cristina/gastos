@@ -113,3 +113,6 @@ app.UseHttpsRedirection();
 app.MapControllers();
 
 app.Run();
+
+// Torna o Program visível para o projeto de testes (WebApplicationFactory<Program>).
+public partial class Program { }
