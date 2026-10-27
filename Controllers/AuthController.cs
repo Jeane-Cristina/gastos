@@ -2,9 +2,11 @@
 using GastosApi.Data;
 using GastosApi.Dtos;
 using GastosApi.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace GastosApi.Controllers;
 
@@ -36,8 +38,8 @@ public class AuthController : ControllerBase
             return StatusCode(503, new { message = "A demonstração está lotada no momento. Tente novamente em alguns minutos ou crie uma conta." });
         }
 
-        var token = _tokenService.GenerateToken(user);
-        return Ok(new { token, demo = true });
+        var (token, refreshToken) = await IssueTokensAsync(user);
+        return Ok(new { token, refreshToken, demo = true });
     }
 
     [HttpPost("login")]
@@ -51,6 +53,51 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Usuário ou senha inválidos." });
         }
 
+        var (token, refreshToken) = await IssueTokensAsync(user);
+        return Ok(new { token, refreshToken });
+    }
+
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] string refreshToken)
+    {
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            return Unauthorized(new { message = "Refresh token inválido ou expirado." });
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+
+        if (user == null || user.RefreshTokenExpiry == null || user.RefreshTokenExpiry < DateTime.UtcNow)
+        {
+            return Unauthorized(new { message = "Refresh token inválido ou expirado." });
+        }
+
+        // rotação: cada refresh gera um novo par e o anterior deixa de valer
+        var (newToken, newRefreshToken) = await IssueTokensAsync(user);
+        return Ok(new { token = newToken, refreshToken = newRefreshToken });
+    }
+
+    /// <summary>Encerra a sessão no servidor: o refresh token deixa de valer.</summary>
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        if (int.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user != null)
+            {
+                user.RefreshToken = null;
+                user.RefreshTokenExpiry = null;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        return NoContent();
+    }
+
+    private async Task<(string Token, string RefreshToken)> IssueTokensAsync(Models.User user)
+    {
         var token = _tokenService.GenerateToken(user);
         var refreshToken = _tokenService.GenerateRefreshToken();
 
@@ -58,27 +105,7 @@ public class AuthController : ControllerBase
         user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
         await _context.SaveChangesAsync();
 
-        return Ok(new { token, refreshToken });
-    }
-
-    [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh([FromBody] string refreshToken)
-    {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
-
-        if (user == null || user.RefreshTokenExpiry < DateTime.UtcNow)
-        {
-            return Unauthorized(new { message = "Refresh token inválido ou expirado." });
-        }
-
-        var newToken = _tokenService.GenerateToken(user);
-        var newRefreshToken = _tokenService.GenerateRefreshToken();
-
-        user.RefreshToken = newRefreshToken;
-        user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
-        await _context.SaveChangesAsync();
-
-        return Ok(new { token = newToken, refreshToken = newRefreshToken });
+        return (token, refreshToken);
     }
 
     [HttpPost("register")]
@@ -99,8 +126,8 @@ public class AuthController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        var token = _tokenService.GenerateToken(user);
-        return Ok(new { token });
+        var (token, refreshToken) = await IssueTokensAsync(user);
+        return Ok(new { token, refreshToken });
     }
 
     [HttpPost("forgot-password")]

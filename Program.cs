@@ -33,22 +33,22 @@ builder.Services.AddHttpClient<WhatsAppService>();
 
 builder.Services.AddRateLimiter(options =>
 {
-    options.AddFixedWindowLimiter("LoginPolicy", opt =>
-    {
-        opt.PermitLimit = 5;
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueLimit = 0;
-    });
+    // Limite por IP: quem erra a senha só bloqueia a si mesmo.
+    options.AddPolicy(RateLimitPolicies.Login, RateLimitPolicies.LoginPartition);
 
     // Cada clique em "Ver demonstração" cria um usuário com ~100 linhas; o limite evita abuso.
-    options.AddFixedWindowLimiter("DemoPolicy", opt =>
-    {
-        opt.PermitLimit = 30;
-        opt.Window = TimeSpan.FromMinutes(1);
-        opt.QueueLimit = 0;
-    });
+    options.AddPolicy(RateLimitPolicies.Demo, RateLimitPolicies.DemoPartition);
 
-    options.RejectionStatusCode = 429;
+    options.OnRejected = async (context, cancellationToken) =>
+    {
+        context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out TimeSpan retryAfter))
+        {
+            context.HttpContext.Response.Headers["Retry-After"] = ((int)retryAfter.TotalSeconds).ToString();
+        }
+        await context.HttpContext.Response.WriteAsJsonAsync(
+            new { message = "Muitas tentativas. Aguarde um pouco e tente de novo." }, cancellationToken);
+    };
 });
 
 builder.Services.AddDbContext<AppDbContext>(options =>

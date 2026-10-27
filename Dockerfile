@@ -10,4 +10,6 @@ WORKDIR /app
 COPY --from=build /app .
 EXPOSE 8080
 ENV ASPNETCORE_URLS=http://+:8080
+# O Render fica na frente da API; com isso o IP real do cliente (X-Forwarded-For) chega ao rate limit.
+ENV ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
 ENTRYPOINT ["dotnet", "GastosApi.dll"]
