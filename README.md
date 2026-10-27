@@ -1,5 +1,7 @@
 # 💰 Controle de Gastos
 
+[![CI](https://github.com/Jeane-Cristina/gastos/actions/workflows/ci.yml/badge.svg)](https://github.com/Jeane-Cristina/gastos/actions/workflows/ci.yml)
+
 Aplicação full-stack de controle e planejamento financeiro pessoal: API REST em C#/ASP.NET Core com autenticação JWT, banco PostgreSQL, testes automatizados e insights gerados por IA a partir das estatísticas reais de cada usuário (Gemini API). Instalável como app (PWA).
 
 **🔗 App em produção:** [gastos-web-ten.vercel.app](https://gastos-web-ten.vercel.app)
