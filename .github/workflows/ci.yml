@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Se você der dois pushes seguidos, cancela o CI do primeiro e roda só o último.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar o .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restaurar pacotes
+        run: dotnet restore GastosApi.csproj
+
+      - name: Compilar a API
+        run: dotnet build GastosApi.csproj --configuration Release --no-restore
+
+      - name: Rodar os testes
+        run: dotnet test GastosApi.Tests/GastosApi.Tests.csproj --configuration Release
